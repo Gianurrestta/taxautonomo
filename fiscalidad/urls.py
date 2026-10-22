@@ -11,4 +11,5 @@ urlpatterns = [
     
     # Ruta crítica: Descarga del documento PDF (Corregido el parámetro exacto)
     path('factura/descargar/<int:factura_id>/', views.descargar_factura_pdf, name='descargar_factura_pdf'),
+    path('cotizacion/convertir/<int:cotizacion_id>/', views.convertir_cotizacion_a_factura, name='convertir_a_factura'),
 ]

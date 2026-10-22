@@ -117,3 +117,45 @@ class GastoRecibido(models.Model):
     @property
     def total_gasto(self) -> Decimal:
         return (self.base_imponible + self.total_iva_soportado).quantize(Decimal('0.01'))
+
+class Cotizacion(models.Model):
+    """Presupuestos o cotizaciones comerciales previas a la facturación"""
+    ESTADOS = [
+        ('BORRADOR', 'Borrador / En edición'),
+        ('ENVIADO', 'Enviado al Cliente'),
+        ('ACEPTADO', 'Aceptado (Listo para facturar)'),
+        ('FACTURADO', 'Convertido en Factura'),
+    ]
+
+    autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='cotizaciones')
+    numero_cotizacion = models.CharField(max_length=50, help_text="Ej: COT-2026-001")
+    cliente_nombre = models.CharField(max_length=150)
+    cliente_nif = models.CharField(max_length=15)
+    titulo_proyecto = models.CharField(max_length=250, help_text="Se convertirá en el concepto de la futura factura")
+    estado = models.CharField(max_length=10, choices=ESTADOS, default='BORRADOR')
+    fecha_creacion = models.DateField(auto_now_add=True)
+
+    @property
+    def total_base_imponible(self) -> Decimal:
+        """Suma determinista del coste de cada elemento desglosado"""
+        total = sum(linea.coste_total for linea in self.lineas.all())
+        return Decimal(total).quantize(Decimal('0.01'))
+
+    def __str__(self):
+        return f"{self.numero_cotizacion} - {self.cliente_nombre} ({self.total_base_imponible}€)"
+
+
+class LineaCotizacion(models.Model):
+    """Elementos o rubros individuales incluidos en una cotización específica"""
+    cotizacion = models.ForeignKey(Cotizacion, on_delete=models.CASCADE, related_name='lineas')
+    descripcion_elemento = models.CharField(max_length=250, help_text="Ej: Desarrollo de base de datos, 10h de consultoría")
+    cantidad = models.PositiveIntegerField(default=1)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+
+    @property
+    def coste_total(self) -> Decimal:
+        return (Decimal(self.cantidad) * self.precio_unitario).quantize(Decimal('0.01'))
+
+    def __str__(self):
+        return f"{self.descripcion_elemento} x {self.cantidad}"
+   

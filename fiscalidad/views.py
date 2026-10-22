@@ -13,7 +13,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 # Importaciones de tu propia aplicación fiscal determinista
-from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido
+from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion
 from .services import calcular_impuestos_trimestre
 
 
@@ -159,3 +159,35 @@ def descargar_factura_pdf(request, factura_id):
     story.append(tabla_factura)
     doc.build(story)
     return response
+
+@login_required
+def convertir_cotizacion_a_factura(request, cotizacion_id):
+    """Transforma una cotización en una factura oficial con coste final acumulado"""
+    cotizacion = get_object_or_404(Cotizacion, id=cotizacion_id, autonomo__user=request.user)
+    perfil = cotizacion.autonomo
+
+    if cotizacion.estado == 'FACTURADO':
+        # Evitamos que se duplique la factura por seguridad si recargan la página
+        return redirect('dashboard_fiscal')
+
+    # 1. Determinamos matemáticamente el siguiente consecutivo legal en el milisegundo exacto
+    numero_factura_legal = perfil.obtener_siguiente_numero_factura()
+
+    # 2. Inyección estricta en la tabla de Facturas Emitidas
+    nueva_factura = FacturaEmitida.objects.create(
+        autonomo=perfil,
+        numero_factura=numero_factura_legal,
+        cliente_nombre=cotizacion.cliente_nombre,
+        cliente_nif=cotizacion.cliente_nif,
+        concepto=cotizacion.titulo_proyecto,               # El título comercial pasa a ser el concepto fiscal
+        base_imponible=cotizacion.total_base_imponible,   # Coste final acumulado del desglose
+        porcentaje_iva=Decimal('0.21')                    # IVA estándar español por defecto
+    )
+
+    # 3. Actualizamos el estado comercial de la cotización para congelarla
+    cotizacion.estado = 'FACTURADO'
+    cotizacion.save()
+
+    # Redirigimos instantáneamente a la descarga segura del PDF oficial de la factura
+    return redirect('descargar_factura_pdf', factura_id=nueva_factura.id)
+
