@@ -108,14 +108,15 @@ def descargar_factura_pdf(request, factura_id):
     story.append(Paragraph(f"FACTURA OFICIAL: {factura.numero_factura}", titulo_style))
     story.append(Spacer(1, 15))
 
-    # Bloque organizativo: Datos del Autónomo Emisor frente al Cliente
+    # Bloque organizativo actualizado con los nuevos campos de contacto del cliente
     datos_emisor = [
-        [Paragraph("<strong>EMISOR (Autónomo):</strong>", normal_style), Paragraph("<strong>CLIENTE:</strong>", normal_style)],
+        [Paragraph("<strong>EMISOR (Autónomo):</strong>", normal_style), Paragraph("<strong>CLIENTE (Consumidor Final):</strong>", normal_style)],
         [Paragraph(f"{autonomo.nombre_fiscal}", normal_style), Paragraph(f"{factura.cliente_nombre}", normal_style)],
         [Paragraph(f"NIF/NIE: {autonomo.nif_nie}", normal_style), Paragraph(f"NIF/NIE: {factura.cliente_nif}", normal_style)],
-        [Paragraph(f"Teléfono: {autonomo.telefono or 'N/A'}", normal_style), Paragraph("", normal_style)],
-        [Paragraph(f"Actividad: {autonomo.actividad_profesional or 'Servicios Profesionales'}", normal_style), Paragraph("", normal_style)],
+        [Paragraph(f"Teléfono: {autonomo.telefono or 'N/A'}", normal_style), Paragraph(f"Teléfono Cliente: {factura.autonomo.cotizaciones.filter(cliente_nombre=factura.cliente_nombre).first().cliente_telefono or 'N/A'}", normal_style)],
+        [Paragraph(f"Actividad: {autonomo.actividad_profesional or 'Servicios'}", normal_style), Paragraph(f"Email Cliente: {factura.autonomo.cotizaciones.filter(cliente_nombre=factura.cliente_nombre).first().cliente_email or 'N/A'}", normal_style)],
     ]
+
     
     # Anchos fijos en puntos para el bloque de datos (260pt por columna)
     table_datos = Table(datos_emisor, colWidths=[260, 260])

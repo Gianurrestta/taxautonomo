@@ -27,7 +27,9 @@ class LineaCotizacionInline(admin.TabularInline):
 
 @admin.register(Cotizacion)
 class CotizacionAdmin(admin.ModelAdmin):
-    list_display = ('numero_cotizacion', 'autonomo', 'cliente_nombre', 'titulo_proyecto', 'total_base_imponible', 'estado')
+    # CORREGIDO: Eliminamos 'numero_cotizacion' y añadimos teléfono y email para el seguimiento continuo
+    list_display = ('titulo_proyecto', 'autonomo', 'cliente_nombre', 'cliente_telefono', 'cliente_email', 'total_base_imponible', 'estado')
     list_filter = ('estado', 'fecha_creacion')
-    search_fields = ('numero_cotizacion', 'cliente_nombre')
-    inlines = [LineaCotizacionInline] # Añade el desglose detallado dentro de la misma pantalla
+    search_fields = ('titulo_proyecto', 'cliente_nombre', 'cliente_email')
+    inlines = [LineaCotizacionInline]
+

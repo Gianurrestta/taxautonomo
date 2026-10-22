@@ -119,7 +119,7 @@ class GastoRecibido(models.Model):
         return (self.base_imponible + self.total_iva_soportado).quantize(Decimal('0.01'))
 
 class Cotizacion(models.Model):
-    """Presupuestos o cotizaciones comerciales previas a la facturación"""
+    """Presupuestos comerciales identificados por nombre y con datos de contacto del cliente"""
     ESTADOS = [
         ('BORRADOR', 'Borrador / En edición'),
         ('ENVIADO', 'Enviado al Cliente'),
@@ -128,10 +128,14 @@ class Cotizacion(models.Model):
     ]
 
     autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='cotizaciones')
-    numero_cotizacion = models.CharField(max_length=50, help_text="Ej: COT-2026-001")
-    cliente_nombre = models.CharField(max_length=150)
-    cliente_nif = models.CharField(max_length=15)
-    titulo_proyecto = models.CharField(max_length=250, help_text="Se convertirá en el concepto de la futura factura")
+    titulo_proyecto = models.CharField(max_length=250, help_text="Nombre de la cotización que identificará el proyecto")
+    cliente_nombre = models.CharField(max_length=150, verbose_name="Consumidor Final")
+    cliente_nif = models.CharField(max_length=15, verbose_name="NIF/NIE del Cliente")
+    
+    # NUEVOS CAMPOS DE CONTACTO PARA SEGUIMIENTO Y ENVÍOS AUTOMÁTICOS
+    cliente_telefono = models.CharField(max_length=20, help_text="Formato internacional, ej: +34600000000 para WhatsApp")
+    cliente_email = models.EmailField()
+    
     estado = models.CharField(max_length=10, choices=ESTADOS, default='BORRADOR')
     fecha_creacion = models.DateField(auto_now_add=True)
 
@@ -142,8 +146,7 @@ class Cotizacion(models.Model):
         return Decimal(total).quantize(Decimal('0.01'))
 
     def __str__(self):
-        return f"{self.numero_cotizacion} - {self.cliente_nombre} ({self.total_base_imponible}€)"
-
+        return f"{self.titulo_proyecto} - {self.cliente_nombre} ({self.total_base_imponible}€)"
 
 class LineaCotizacion(models.Model):
     """Elementos o rubros individuales incluidos en una cotización específica"""
