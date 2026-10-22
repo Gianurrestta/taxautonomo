@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Emitir Nueva Factura</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; }
+        .form-container { max-width: 600px; background: white; margin: 30px auto; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h2 { color: #2c3e50; margin-top: 0; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #34495e; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn-submit { background: #3498db; color: white; padding: 12px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; }
+        .btn-submit:hover { background: #2980b9; }
+        .back-link { display: inline-block; margin-top: 15px; color: #7f8c8d; text-decoration: none; }
+        .alerta-consecutivo { background: #e8f4f8; border-left: 5px solid #3498db; padding: 12px; margin-bottom: 20px; border-radius: 4px; color: #2c3e50; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>➕ Emitir Factura Oficial</h2>
+        
+        <div class="alerta-consecutivo">
+            El sistema generará automáticamente la factura número: {{ siguiente_numero }}
+        </div>
+        
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label for="cliente_nombre">Nombre o Razón Social del Cliente:</label>
+                <input type="text" id="cliente_nombre" name="cliente_nombre" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cliente_nif">NIF / NIE del Cliente:</label>
+                <input type="text" id="cliente_nif" name="cliente_nif" required>
+            </div>
+
+            <div class="form-group">
+                <label for="concepto">Concepto / Rubro de Trabajo:</label>
+                <input type="text" id="concepto" name="concepto" placeholder="Ej: Consultoría de Software o Diseño Web" required>
+            </div>
+
+            <div class="form-group">
+                <label for="base_imponible">Base Imponible (€):</label>
+                <input type="number" id="base_imponible" name="base_imponible" step="0.01" min="0.01" required>
+            </div>
+
+            <div class="form-group">
+                <label for="porcentaje_iva">Tipo de IVA aplicable:</label>
+                <select id="porcentaje_iva" name="porcentaje_iva" required>
+                    <option value="0.21">21% (General)</option>
+                    <option value="0.10">10% (Reducido)</option>
+                    <option value="0.04">4% (Superreducido)</option>
+                    <option value="0.00">0% (Exento)</option>
+                </select>
+            </div>
+
+            <button type="submit" class="btn-submit">💾 Guardar y Descargar PDF Oficial</button>
+        </form>
+        <a href="{% url 'dashboard_fiscal' %}" class="back-link">← Volver al Dashboard</a>
+    </div>
+</body>
+</html>
+

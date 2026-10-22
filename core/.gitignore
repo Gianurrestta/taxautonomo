@@ -1,0 +1,11 @@
+# Ocultar claves de seguridad y contraseñas
+.env
+
+# Ocultar la base de datos local con datos de usuarios
+*.sqlite3
+
+# Ocultar archivos temporales de Python y librerías del entorno
+venv/
+__pycache__/
+*.pyc
+media/
