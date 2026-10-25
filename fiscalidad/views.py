@@ -19,7 +19,7 @@ from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion
 
 @login_required
 def dashboard_fiscal(request):
-    """Pantalla principal donde el cliente ve sus impuestos e imágenes de facturas del mes"""
+    """Pantalla principal donde el cliente ve sus impuestos, gastos y sus presupuestos comerciales"""
     try:
         perfil = request.user.perfil
     except PerfilAutonomo.DoesNotExist:
@@ -33,11 +33,15 @@ def dashboard_fiscal(request):
     
     gastos_mes = GastoRecibido.objects.filter(autonomo=perfil, fecha_gasto__year=hoy.year, fecha_gasto__month=hoy.month)
     facturas_mes = FacturaEmitida.objects.filter(autonomo=perfil, fecha_emision__year=hoy.year, fecha_emision__month=hoy.month)
+    
+    # NUEVA CONSULTA: Extraemos todos los presupuestos de este autónomo para el seguimiento
+    cotizaciones_usuario = Cotizacion.objects.filter(autonomo=perfil).order_by('-fecha_creacion')
 
     context = {
         'datos_fiscales': datos_fiscales,
         'gastos_mes': gastos_mes,
         'facturas_mes': facturas_mes,
+        'cotizaciones_usuario': cotizaciones_usuario, # <--- ENVIADO AL HTML
     }
     return render(request, 'fiscalidad/dashboard.html', context)
 
