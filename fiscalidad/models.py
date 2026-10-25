@@ -22,7 +22,6 @@ class PerfilAutonomo(models.Model):
     regimen_fiscal = models.CharField(max_length=3, choices=REGIMENES, default='EDV')
 
     def obtener_siguiente_numero_factura(self, tipo_serie='ORDINARIA') -> str:
-        """Regla de Oro 2: Generación automática correlativa y cronológica segmentada por Series"""
         año_actual = datetime.date.today().year
         prefijo = f"F-{año_actual}-" if tipo_serie == 'ORDINARIA' else f"R-{año_actual}-"
         
@@ -48,8 +47,25 @@ class PerfilAutonomo(models.Model):
         return f"{self.nombre_fiscal} ({self.nif_nie})"
 
 
+class Cliente(models.Model):
+    """MÓDULO 1: Directorio y Base de Datos CRM de Clientes del Autónomo"""
+    autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='clientes_crm')
+    nombre_o_razon_social = models.CharField(max_length=150, verbose_name="Nombre o Razón Social")
+    nif_nie = models.CharField(max_length=15, verbose_name="NIF / NIE")
+    domicilio_fiscal = models.CharField(max_length=255, verbose_name="Domicilio Fiscal")
+    telefono = models.CharField(max_length=20, help_text="Formato internacional, ej: +34600000000 para WhatsApp")
+    email = models.EmailField(verbose_name="Correo Electrónico")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('autonomo', 'nif_nie') # Evita duplicar el mismo cliente para un mismo autónomo
+
+    def __str__(self):
+        return f"{self.nombre_o_razon_social} ({self.nif_nie})"
+
+
 class FacturaEmitida(models.Model):
-    """Estructura de Facturación Ordinaria y Rectificativa adaptada a VERI*FACTU"""
+    """Estructura de Facturación adaptada a VERI*FACTU vinculada al CRM"""
     TIPOS_SERIE = [
         ('ORDINARIA', 'Serie F (Ordinaria / Venta)'),
         ('RECTIFICATIVA', 'Serie R (Rectificativa / Modificación)'),
@@ -62,19 +78,21 @@ class FacturaEmitida(models.Model):
     ]
 
     autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='facturas_emitidas')
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='facturas', null=True, help_text="Cliente desde la base de datos CRM")
     tipo_serie = models.CharField(max_length=15, choices=TIPOS_SERIE, default='ORDINARIA')
-    numero_factura = models.CharField(max_length=50, help_text="Numeración correlativa anual (Ej: 2026-0001)")
-    fecha_emision = models.DateField(auto_now_add=True, help_text="Día exacto en que se genera la factura")
-    fecha_operacion = models.DateField(default=datetime.date.today, help_text="Día en que se prestó el servicio")
+    numero_factura = models.CharField(max_length=50)
+    fecha_emision = models.DateField(auto_now_add=True)
+    fecha_operacion = models.DateField(default=datetime.date.today)
     
-    cliente_nombre = models.CharField(max_length=150, verbose_name="Nombre / Razón Social Cliente")
-    cliente_nif = models.CharField(max_length=15, verbose_name="NIF/NIE Cliente")
-    cliente_domicilio = models.CharField(max_length=255, default='', verbose_name="Domicilio Fiscal Cliente")
+    # Mantenemos los campos de texto como copia estática histórica (Exigencia legal si el cliente cambia de dirección)
+    cliente_nombre = models.CharField(max_length=150, blank=True)
+    cliente_nif = models.CharField(max_length=15, blank=True)
+    cliente_domicilio = models.CharField(max_length=255, blank=True)
     
     concepto = models.CharField(max_length=250, default="Servicios profesionales prestados")
     base_imponible = models.DecimalField(max_digits=12, decimal_places=2)
     porcentaje_iva = models.DecimalField(max_digits=4, decimal_places=2, choices=TIPOS_IVA, default=Decimal('0.21'))
-    hash_verifactu = models.CharField(max_length=64, blank=True, help_text="Huella de encadenamiento inalterable")
+    hash_verifactu = models.CharField(max_length=64, blank=True)
 
     class Meta:
         unique_together = ('autonomo', 'numero_factura')
@@ -93,19 +111,17 @@ class FacturaEmitida(models.Model):
         if self.fecha_operacion > datetime.date.today():
             raise ValidationError({"fecha_operacion": "La fecha de la operación no puede ser una fecha futura."})
 
-        ultima_factura = FacturaEmitida.objects.filter(
-            autonomo=self.autonomo,
-            tipo_serie=self.tipo_serie
-        ).order_by('-id').first()
-
-        if ultima_factura and self.fecha_emision:
-            if self.fecha_emision < ultima_factura.fecha_emision:
-                raise ValidationError(
-                    f"Incumplimiento Cronológico AEAT: No puedes emitir la factura con fecha {self.fecha_emision} "
-                    f"porque la última factura de la serie ({ultima_factura.numero_factura}) tiene fecha {ultima_factura.fecha_emision}."
-                )
+        ultima_factura = FacturaEmitida.objects.filter(autonomo=self.autonomo, tipo_serie=self.tipo_serie).order_by('-id').first()
+        if ultima_factura and self.fecha_emision and self.fecha_emision < ultima_factura.fecha_emision:
+            raise ValidationError(f"Incumplimiento Cronológico AEAT.")
 
     def save(self, *args, **kwargs):
+        # Al guardar, si se seleccionó un cliente del CRM, congelamos sus datos fiscales actuales en la factura
+        if self.cliente:
+            self.cliente_nombre = self.cliente.nombre_o_razon_social
+            self.cliente_nif = self.cliente.nif_nie
+            self.cliente_domicilio = self.cliente.domicilio_fiscal
+            
         self.full_clean()
         if not self.hash_verifactu:
             ultima = FacturaEmitida.objects.filter(autonomo=self.autonomo).order_by('-id').first()
@@ -119,7 +135,7 @@ class FacturaEmitida(models.Model):
 
 
 class Cotizacion(models.Model):
-    """Presupuestos comerciales identificados por nombre y con datos de contacto del cliente"""
+    """Presupuestos vinculados de forma directa a la tabla unificada de Clientes"""
     ESTADOS = [
         ('BORRADOR', 'Borrador / En edición'),
         ('ENVIADO', 'Enviado al Cliente'),
@@ -128,11 +144,15 @@ class Cotizacion(models.Model):
     ]
 
     autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='cotizaciones')
-    titulo_proyecto = models.CharField(max_length=250, help_text="Nombre de la cotización que identificará el proyecto")
-    cliente_nombre = models.CharField(max_length=150, verbose_name="Consumidor Final")
-    cliente_nif = models.CharField(max_length=15, verbose_name="NIF/NIE del Cliente")
-    cliente_telefono = models.CharField(max_length=20, default='', help_text="Formato internacional, ej: +34600000000")
-    cliente_email = models.EmailField(default='')
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='cotizaciones', null=True)
+    titulo_proyecto = models.CharField(max_length=250)
+    
+    # Copias estáticas para resguardo comercial rápido
+    cliente_nombre = models.CharField(max_length=150, blank=True)
+    cliente_nif = models.CharField(max_length=15, blank=True)
+    cliente_telefono = models.CharField(max_length=20, blank=True)
+    cliente_email = models.EmailField(blank=True)
+    
     estado = models.CharField(max_length=10, choices=ESTADOS, default='BORRADOR')
     fecha_creacion = models.DateField(auto_now_add=True)
 
@@ -141,27 +161,30 @@ class Cotizacion(models.Model):
         total = sum(linea.coste_total for linea in self.lineas.all())
         return Decimal(total).quantize(Decimal('0.01'))
 
+    def save(self, *args, **kwargs):
+        if self.cliente:
+            self.cliente_nombre = self.cliente.nombre_o_razon_social
+            self.cliente_nif = self.cliente.nif_nie
+            self.cliente_telefono = self.cliente.telefono
+            self.cliente_email = self.cliente.email
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.titulo_proyecto} - {self.cliente_nombre} ({self.total_base_imponible}€)"
+        return f"{self.titulo_proyecto} - {self.cliente_nombre}"
 
 
 class LineaCotizacion(models.Model):
-    """Elementos o rubros individuales incluidos en una cotización específica"""
     cotizacion = models.ForeignKey(Cotizacion, on_delete=models.CASCADE, related_name='lineas')
     descripcion_elemento = models.CharField(max_length=250)
-    cantidad = models.PositiveIntegerField(default=1)
+    width = models.PositiveIntegerField(default=1) # Cantidad
     precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
 
     @property
     def coste_total(self) -> Decimal:
-        return (Decimal(self.cantidad) * self.precio_unitario).quantize(Decimal('0.01'))
-
-    def __str__(self):
-        return f"{self.descripcion_elemento} x {self.cantidad}"
+        return (Decimal(self.width) * self.precio_unitario).quantize(Decimal('0.01'))
 
 
 class GastoRecibido(models.Model):
-    """Gastos soportados vinculados obligatoriamente a un documento digitalizado"""
     CATEGORIAS_HACIENDA = [
         ('ALM', 'Arrendamientos y cánones (Alquileres)'),
         ('CON', 'Conservación y reparación'),
@@ -183,16 +206,3 @@ class GastoRecibido(models.Model):
     porcentaje_iva = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.21'))
     estado_pago = models.CharField(max_length=10, choices=ESTADOS_PAGO, default='PENDIENTE')
     fecha_pago_real = models.DateField(null=True, blank=True)
-    factura_digital = models.FileField(upload_to="facturas_proveedores/", null=True, blank=True)
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def total_iva_soportado(self) -> Decimal:
-        return (self.base_imponible * self.porcentaje_iva).quantize(Decimal('0.01'))
-
-    @property
-    def total_gasto(self) -> Decimal:
-        return (self.base_imponible + self.total_iva_soportado).quantize(Decimal('0.01'))
-
-    def __str__(self):
-        return f"[{self.estado_pago}] {self.proveedor_nombre} - {self.total_gasto}€"

@@ -13,8 +13,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
-# Importaciones de tu propia aplicación
-from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion
+# Importaciones de tu propia aplicación fiscal (CORREGIDO)
+from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, Cliente
+from .services import calcular_impuestos_trimestre
 
 
 @login_required
@@ -48,36 +49,43 @@ def dashboard_fiscal(request):
 
 @login_required
 def emitir_factura(request):
-    """Formulario seguro con cálculo automático de número correlativo legal"""
+    """Formulario seguro conectado directamente a la base de datos de Clientes CRM"""
     try:
         perfil = request.user.perfil
     except PerfilAutonomo.DoesNotExist:
         return render(request, 'fiscalidad/no_perfil.html')
 
     numero_provisional = perfil.obtener_siguiente_numero_factura()
+    # Obtenemos todos los clientes registrados por este autónomo en su CRM
+    mis_clientes = Cliente.objects.filter(autonomo=perfil).order_by('nombre_o_razon_social')
 
     if request.method == 'POST':
-        cliente = request.POST.get('cliente_nombre')
-        nif = request.POST.get('cliente_nif')
+        cliente_id = request.POST.get('cliente_id')
         concepto = request.POST.get('concepto', 'Servicios profesionales')
         base = request.POST.get('base_imponible', '0.00')
         iva = request.POST.get('porcentaje_iva', '0.21')
+        fecha_op = request.POST.get('fecha_operacion')
         
+        # Recuperamos la ficha del cliente desde el CRM unificado
+        cliente_instancia = get_object_or_404(Cliente, id=cliente_id, autonomo=perfil)
         numero_definitivo = perfil.obtener_siguiente_numero_factura()
         
         nueva_factura = FacturaEmitida.objects.create(
             autonomo=perfil,
+            cliente=cliente_instancia, # Vinculación relacional directa
             numero_factura=numero_definitivo,
-            cliente_nombre=cliente,
-            cliente_nif=nif,
             concepto=concepto,
             base_imponible=Decimal(base),
-            porcentaje_iva=Decimal(iva)
+            porcentaje_iva=Decimal(iva),
+            fecha_operacion=datetime.datetime.strptime(fecha_op, '%Y-%m-%d').date() if fecha_op else datetime.date.today()
         )
         return redirect('descargar_factura_pdf', factura_id=nueva_factura.id)
 
-    return render(request, 'fiscalidad/emitir_factura.html', {'siguiente_numero': numero_provisional})
-
+    context = {
+        'siguiente_numero': numero_provisional,
+        'mis_clientes': mis_clientes # Enviado para el select en el HTML
+    }
+    return render(request, 'fiscalidad/emitir_factura.html', context)
 
 @login_required
 def descargar_factura_pdf(request, factura_id):

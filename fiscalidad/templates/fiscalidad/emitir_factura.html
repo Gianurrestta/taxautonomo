@@ -24,17 +24,20 @@
             El sistema generará automáticamente la factura número: {{ siguiente_numero }}
         </div>
         
-        <form method="POST">
+                <form method="POST">
             {% csrf_token %}
 
             <div class="form-group">
-                <label for="cliente_nombre">Nombre o Razón Social del Cliente:</label>
-                <input type="text" id="cliente_nombre" name="cliente_nombre" required>
-            </div>
-
-            <div class="form-group">
-                <label for="cliente_nif">NIF / NIE del Cliente:</label>
-                <input type="text" id="cliente_nif" name="cliente_nif" required>
+                <label for="cliente_id">Seleccionar Cliente del CRM:</label>
+                <select id="cliente_id" name="cliente_id" required>
+                    <option value="">-- Selecciona un cliente guardado --</option>
+                    {% for c in mis_clientes %}
+                        <option value="{{ c.id }}">{{ c.nombre_o_razon_social }} ({{ c.nif_nie }})</option>
+                    {% empty %}
+                        <option value="" disabled>No tienes clientes en tu CRM. Regístralos primero en el panel.</option>
+                    {% endfor %}
+                </select>
+                <small><a href="/admin/fiscalidad/cliente/add/" target="_blank" style="color: #3498db; text-decoration: none;">+ Registrar nuevo cliente en el directorio</a></small>
             </div>
 
             <div class="form-group">
@@ -57,8 +60,14 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label for="fecha_operacion">Fecha de la Operación:</label>
+                <input type="date" id="fecha_operacion" name="fecha_operacion" value="{{ datetime.date.today|date:'Y-m-d' }}" required>
+            </div>
+
             <button type="submit" class="btn-submit">💾 Guardar y Descargar PDF Oficial</button>
         </form>
+
         <a href="{% url 'dashboard_fiscal' %}" class="back-link">← Volver al Dashboard</a>
     </div>
 </body>

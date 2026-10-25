@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido
 from .models import Cotizacion, LineaCotizacion
+from .models import Cliente
 
 # Registramos tus modelos con configuraciones limpias para el panel
 @admin.register(PerfilAutonomo)
@@ -33,3 +34,8 @@ class CotizacionAdmin(admin.ModelAdmin):
     search_fields = ('titulo_proyecto', 'cliente_nombre', 'cliente_email')
     inlines = [LineaCotizacionInline]
 
+@admin.register(Cliente)
+class ClienteAdmin(admin.ModelAdmin):
+    list_display = ('nombre_o_razon_social', 'nif_nie', 'telefono', 'email', 'autonomo')
+    search_fields = ('nombre_o_razon_social', 'nif_nie', 'email')
+    list_filter = ('fecha_registro',)
