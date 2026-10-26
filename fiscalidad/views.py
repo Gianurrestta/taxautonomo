@@ -6,6 +6,8 @@ import urllib.parse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 
 # Importaciones para la generación de PDFs (ReportLab)
 from reportlab.lib.pagesizes import letter
@@ -248,3 +250,68 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     cotizacion.estado = 'FACTURADO'
     cotizacion.save()
     return redirect('descargar_factura_pdf', factura_id=nueva_factura.id)
+
+def login_usuario(request):
+    """Procesa el acceso seguro controlando las credenciales"""
+    if request.user.is_authenticated:
+        return redirect('dashboard_fiscal')
+        
+    error = None
+    if request.method == 'POST':
+        u = request.POST.get('username')
+        p = request.POST.get('password')
+        
+        user = authenticate(request, username=u, password=p)
+        if user is not None:
+            login(request, user)
+            return redirect('dashboard_fiscal')
+        else:
+            error = "Usuario o contraseña incorrectos. Por favor, verifica de nuevo."
+            
+    return render(request, 'fiscalidad/login.html', {'error': error})
+
+
+def registro_autonomo(request):
+    """Automatiza el registro completo creando el User y su Perfil Fiscal obligatorio"""
+    if request.user.is_authenticated:
+        return redirect('dashboard_fiscal')
+        
+    error = None
+    if request.method == 'POST':
+        u = request.POST.get('username')
+        em = request.POST.get('email')
+        p = request.POST.get('password')
+        
+        # Datos fiscales
+        nf = request.POST.get('nombre_fiscal')
+        nif = request.POST.get('nif_nie')
+        df = request.POST.get('domicilio_fiscal')
+        
+        # Validamos de forma preventiva que el usuario o el NIF no estén repetidos
+        if User.objects.filter(username=u).exists():
+            error = "El nombre de usuario ya está registrado en el sistema."
+        elif PerfilAutonomo.objects.filter(nif_nie=nif).exists():
+            error = "Este NIF/NIE ya se encuentra registrado con otra cuenta."
+        else:
+            # 1. Creamos el usuario base cifrando la contraseña
+            nuevo_user = User.objects.create_user(username=u, email=em, password=p)
+            
+            # 2. Creamos de golpe su perfil fiscal inyectando sus datos obligatorios
+            PerfilAutonomo.objects.create(
+                user=nuevo_user,
+                nif_nie=nif,
+                nombre_fiscal=nf,
+                domicilio_fiscal=df
+            )
+            
+            # 3. Lo logueamos de forma directa para máxima comodidad
+            login(request, nuevo_user)
+            return redirect('dashboard_fiscal')
+            
+    return render(request, 'fiscalidad/registro.html', {'error': error})
+
+
+def logout_usuario(request):
+    """Cierra la sesión destruyendo de forma segura los identificadores"""
+    logout(request)
+    return redirect('login_usuario')

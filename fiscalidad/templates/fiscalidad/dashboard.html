@@ -130,7 +130,7 @@
                     <td><strong>{{ factura.numero_factura }}</strong></td>
                     <td>{{ factura.cliente_nombre }}</td>
                     <td>{{ factura.base_imponible }} €</td>
-                    <td>{{ factura.total_iva }} € ({{ factura.porcentaje_iva * 100:.0f}}%)</td>
+                    <td>{{ factura.total_iva }} € ({% if factura.porcentaje_iva == 0.21 %}21%{% elif factura.porcentaje_iva == 0.10 %}10%{% elif factura.porcentaje_iva == 0.04 %}4%{% else %}0%{% endif %})</td>
                     <td><strong>{{ factura.total_factura }} €</strong></td>
                     <td><font fontName="Courier" size="1" style="color: #7f8c8d;">{{ factura.hash_verifactu|truncatechars:15 }}</font></td>
                     <td><a href="{% url 'descargar_factura_pdf' factura.id %}" class="btn btn-pdf" style="background: #34495e;">📥 Re-descargar PDF</a></td>

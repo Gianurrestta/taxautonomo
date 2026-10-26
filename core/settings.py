@@ -137,3 +137,6 @@ MAILERS = {
 # Configuración para subida segura de archivos y facturas digitalizadas
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Seguridad Relacional: Envía a los usuarios no logueados a la pantalla de login
+LOGIN_URL = 'login_usuario'

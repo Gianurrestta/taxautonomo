@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Autónomo</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .reg-container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); box-sizing: border-box; overflow-y: auto; max-height: 90vh; }
+        h2 { color: #2c3e50; margin-top: 0; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #34495e; font-size: 14px; }
+        input[type="text"], input[type="password"], input[type="email"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .btn-submit { background: #2ecc71; color: white; padding: 12px 20px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; font-size: 16px; margin-top: 10px; }
+        .btn-submit:hover { background: #27ae60; }
+        .error-msg { background: #fadbd8; color: #c0392b; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; text-align: center; }
+        .login-link { display: block; text-align: center; margin-top: 15px; color: #7f8c8d; text-decoration: none; font-size: 14px; }
+        .login-link:hover { color: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div class="reg-container">
+        <h2>📝 Registro de Usuario</h2>
+        
+        {% if error %}
+            <div class="error-msg">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="username">Nombre de Usuario para el Login:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Correo Electrónico:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Contraseña de Seguridad:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+            <h3 style="color: #34495e; font-size: 16px; margin-top: 0;">Datos Fiscales Obligatorios (AEAT)</h3>
+
+            <div class="form-group">
+                <label for="nombre_fiscal">Nombre y Apellidos o Razón Social:</label>
+                <input type="text" id="nombre_fiscal" name="nombre_fiscal" required>
+            </div>
+            <div class="form-group">
+                <label for="nif_nie">NIF o NIE Español:</label>
+                <input type="text" id="nif_nie" name="nif_nie" placeholder="Ej: 12345678X" required>
+            </div>
+            <div class="form-group">
+                <label for="domicilio_fiscal">Domicilio Fiscal Completo:</label>
+                <input type="text" id="domicilio_fiscal" name="domicilio_fiscal" placeholder="Ej: Calle Mayor 10, Madrid" required>
+            </div>
+            
+            <button type="submit" class="btn-submit">Crear Mi Cuenta y Perfil</button>
+        </form>
+        <a href="{% url 'login_usuario' %}" class="login-link">¿Ya tienes cuenta? Inicia sesión aquí</a>
+    </div>
+</body>
+</html>
