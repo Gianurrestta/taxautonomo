@@ -143,6 +143,11 @@
             </tbody>
         </table>
     </div>
+    <!-- BOTÓN DE CIERRE DE SESIÓN SEGURO -->
+    <div style="margin-top: 40px; border-top: 1fr solid #ddd; padding-top: 20px; text-align: center;">
+        <a href="{% url 'logout_usuario' %}" class="btn" style="background: #95a5a6; padding: 10px 25px;">🔒 Cerrar Sesión de Forma Segura</a>
+        <p style="color: #7f8c8d; font-size: 12px; margin-top: 8px;">Conectado de forma hermética bajo el identificador de: <strong>{{ request.user.username }}</strong></p>
+    </div>
 </body>
 </html>
 

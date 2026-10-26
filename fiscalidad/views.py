@@ -89,26 +89,28 @@ def emitir_factura(request):
 
 @login_required
 def descargar_factura_pdf(request, factura_id):
-    """Generación de PDF profesional conforme al RD 1619/2012 y VERI*FACTU"""
+    """Generación de PDF profesional conforme al RD 1619/2012 y VERI*FACTU con Pie de Página Fijo"""
     factura = get_object_or_404(FacturaEmitida, id=factura_id, autonomo__user=request.user)
     autonomo = factura.autonomo
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Factura_{factura.numero_factura}.pdf"'
 
-    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    # Inicialización del lienzo del documento
+    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=60)
     story = []
     styles = getSampleStyleSheet()
 
+    # Estilos tipográficos
     titulo_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#1a252f'), spaceAfter=15)
     normal_style = styles['Normal']
     bold_style = ParagraphStyle('BoldStyle', parent=normal_style, fontName='Helvetica-Bold')
-    aviso_legal_style = ParagraphStyle('Legal', parent=normal_style, fontSize=9, textColor=colors.HexColor('#7f8c8d'), alignment=1, spaceBefore=25)
 
     story.append(Paragraph(f"FACTURA OFICIAL: {factura.numero_factura}", titulo_style))
     story.append(Paragraph(f"Fecha de Emisión: <strong>{factura.fecha_emision}</strong> | Fecha de Operación: <strong>{factura.fecha_operacion}</strong>", normal_style))
     story.append(Spacer(1, 20))
 
+    # Bloque de Datos Identificativos y Domicilios Fiscales
     datos_completos = [
         [Paragraph("<strong>EMISOR (Autónomo):</strong>", normal_style), Paragraph("<strong>RECEPTOR (Cliente):</strong>", normal_style)],
         [Paragraph(f"{autonomo.nombre_fiscal}", normal_style), Paragraph(f"{factura.cliente_nombre}", normal_style)],
@@ -121,6 +123,7 @@ def descargar_factura_pdf(request, factura_id):
     story.append(table_datos)
     story.append(Spacer(1, 30))
 
+    # Tabla Desglosada del Cobro por Rubros
     headers_tabla = [
         [Paragraph("<strong>Concepto / Descripción detallada</strong>", bold_style), 
          Paragraph("<strong>Base Imponible</strong>", bold_style), 
@@ -147,13 +150,30 @@ def descargar_factura_pdf(request, factura_id):
     ]))
     story.append(tabla_factura)
 
-    story.append(Spacer(1, 40))
-    story.append(Paragraph(f"Huella Digital de Registro (VERI*FACTU ID): <font fontName='Courier' size='7'>{factura.hash_verifactu}</font>", normal_style))
-    story.append(Paragraph("<strong>Factura verificable en la sede electrónica de la AEAT o VERI*FACTU</strong>", aviso_legal_style))
+    # FUNCIÓN INTERNA DE LIENZO: Dibuja de forma fija el pie de página legal en cada hoja
+    def agregar_pie_pagina_verifactu(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.lightgrey)
+        canvas.setLineWidth(0.5)
+        # Dibujamos una línea divisoria gris por encima del pie de página
+        canvas.line(40, 45, 572, 45)
+        
+        # Texto del Hash VERI*FACTU resaltado en Negrita
+        texto_hash = f"Huella Digital de Registro (VERI*FACTU ID): {factura.hash_verifactu}"
+        canvas.setFont("Helvetica-Bold", 8) # <--- Negrita e indicador de tamaño pequeño
+        canvas.drawString(40, 32, texto_hash)
+        
+        # Leyenda legal oficial obligatoria
+        texto_legal = "Factura verificable en la sede electrónica de la AEAT o VERI*FACTU"
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.HexColor('#7f8c8d'))
+        canvas.drawString(40, 20, texto_legal)
+        
+        canvas.restoreState()
 
-    doc.build(story)
+    # Compilamos el documento asociando la función del pie de página
+    doc.build(story, onFirstPage=agregar_pie_pagina_verifactu, onLaterPages=agregar_pie_pagina_verifactu)
     return response
-
 
 @login_required
 def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
@@ -216,9 +236,9 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
         cotizacion.save()
     return response
 
-    @login_required
-    def disparar_whatsapp_cotizacion(request, cotizacion_id):
-        """Abre la API oficial de WhatsApp Web con el texto estructurado del cliente"""
+@login_required
+def disparar_whatsapp_cotizacion(request, cotizacion_id):
+    """Abre la API oficial de WhatsApp Web con el texto estructurado del cliente"""
     cotizacion = get_object_or_404(Cotizacion, id=cotizacion_id, autonomo__user=request.user)
     mensaje = (
     f"Hola {cotizacion.cliente_nombre},\n\n"
@@ -229,9 +249,10 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     mensaje_url = urllib.parse.quote(mensaje)
     whatsapp_url = f"whatsapp.com{cotizacion.cliente_telefono}&text={mensaje_url}"
     return redirect(whatsapp_url)
-    @login_required
-    def convertir_cotizacion_a_factura(request, cotizacion_id):
-        """Fase 3: Transforma una cotización aceptada en factura oficial definitiva unificada"""
+
+@login_required
+def convertir_cotizacion_a_factura(request, cotizacion_id):
+    """Fase 3: Transforma una cotización aceptada en factura oficial definitiva unificada"""
     cotizacion = get_object_or_404(Cotizacion, id=cotizacion_id, autonomo__user=request.user)
     perfil = cotizacion.autonomo
     if cotizacion.estado == 'FACTURADO':

@@ -65,7 +65,7 @@ def calcular_impuestos_trimestre(perfil: PerfilAutonomo, año: int, trimestre: i
 
     return {
         "ejercicio": año,
-        "trimestre": f"{trimestre}T",
+        "trimestre": f"{trimestre}º Trimestre",
         "resumen_ingresos": {
             "base_imponible_total": total_ingresos_base.quantize(Decimal('0.01')),
             "iva_repercutido": iva_devengado_total.quantize(Decimal('0.01')),
