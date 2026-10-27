@@ -158,7 +158,7 @@ def descargar_factura_pdf(request, factura_id):
             f"importe={factura.total_factura}"
         )
         
-        qr_code = qr.QrCodeWidget(url_aeat, width=65, height=65)
+        qr_code = qr.QrCodeWidget(url_aeat, barWidth=1.5, barHeight=1.5)
         d_qr = Drawing(65, 65)
         d_qr.add(qr_code)
         
