@@ -15,7 +15,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 # Módulo crítico para dibujar el código QR oficial de VERI*FACTU
-from reportlab.graphics.barcode.qr import QrCode
+from reportlab.graphics.barcode import qr
 from reportlab.graphics.shapes import Drawing
 
 # Importaciones de tu propia aplicación relacional CRM
@@ -149,22 +149,36 @@ def descargar_factura_pdf(request, factura_id):
     def agregar_elementos_verifactu(canvas, doc):
         canvas.saveState()
         
-      # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Directa sobre Lienzo VERI*FACTU)
+      # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Alta Definición VERI*FACTU)
+        importe_limpio = str(factura.total_factura).replace(" €", "").strip()
+        fecha_limpia = str(factura.fecha_emision).strip()
+        
         url_aeat = (
             f"https://agenciatributaria.es?"
-            f"nif={autonomo.nif_nie}&"
+            f"nif={factura.autonomo.nif_nie}&"
             f"num={factura.numero_factura}&"
-            f"fecha={factura.fecha_emision}&"
-            f"importe={factura.total_factura}"
+            f"fecha={fecha_limpia}&"
+            f"importe={importe_limpio}"
         )
         
-        # Generamos el QR de forma directa fijando sus dimensiones (65 píxeles de ancho y alto)
-        qr_code = QrCode(url_aeat, width=65, height=65)
+        # Generamos el componente con barWidth bajo y qrVersion=1 para crear un patrón simple y súper legible
+        qr_componente = qr.QrCodeWidget(url_aeat)
+        qr_componente.barWidth = 1.8
+        qr_componente.barHeight = 1.8
+        qr_componente.qrVersion = 1  # <--- FUERZA ALTA DEFINICIÓN SIN COMPRESIÓN
         
-        # SOLUCIÓN INDESTRUCTIBLE: Dibujamos el QR directamente en el canvas sin intermediarios
-        # Coordenadas exactas en la esquina inferior derecha: X=505, Y=45
-        qr_code.drawOn(canvas, 505, 45)
-
+        # Obtenemos los límites geométricos exactos del QR para que el contenedor NO lo recorte
+        bounds = qr_componente.getBounds()
+        ancho_qr = bounds[2] - bounds[0]
+        alto_qr = bounds[3] - bounds[1]
+        
+        # Creamos el contenedor gráfico con las medidas dinámicas exactas
+        d_qr = Drawing(ancho_qr, alto_qr)
+        d_qr.add(qr_componente)
+        
+        # Posicionamiento absoluto en la esquina inferior derecha (X=480, Y=48)
+        d_qr.drawOn(canvas, 480, 48)
+        
         # 2. DIBUJO DEL PIE DE PÁGINA TRADICIONAL PERFECTAMENTE CENTRADO
         canvas.setStrokeColor(colors.lightgrey)
         canvas.setLineWidth(0.5)
