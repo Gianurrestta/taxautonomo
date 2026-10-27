@@ -149,7 +149,7 @@ def descargar_factura_pdf(request, factura_id):
     def agregar_elementos_verifactu(canvas, doc):
         canvas.saveState()
         
-      # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Alta Definición VERI*FACTU)
+              # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Alta Definición Fija VERI*FACTU)
         importe_limpio = str(factura.total_factura).replace(" €", "").strip()
         fecha_limpia = str(factura.fecha_emision).strip()
         
@@ -161,24 +161,20 @@ def descargar_factura_pdf(request, factura_id):
             f"importe={importe_limpio}"
         )
         
-        # Generamos el componente con barWidth bajo y qrVersion=1 para crear un patrón simple y súper legible
+        # Configuramos el componente con el grosor de barra exacto para que NO se amontone
         qr_componente = qr.QrCodeWidget(url_aeat)
-        qr_componente.barWidth = 1.8
-        qr_componente.barHeight = 1.8
-        qr_componente.qrVersion = 1  # <--- FUERZA ALTA DEFINICIÓN SIN COMPRESIÓN
+        qr_componente.barWidth = 1.5
+        qr_componente.barHeight = 1.5
+        qr_componente.qrVersion = 1  # Fuerza el patrón más simple y nítido para cámaras móviles
         
-        # Obtenemos los límites geométricos exactos del QR para que el contenedor NO lo recorte
-        bounds = qr_componente.getBounds()
-        ancho_qr = bounds[2] - bounds[0]
-        alto_qr = bounds[3] - bounds[1]
-        
-        # Creamos el contenedor gráfico con las medidas dinámicas exactas
-        d_qr = Drawing(ancho_qr, alto_qr)
+        # SOLUCIÓN INDESTRUCTIBLE: Creamos el contenedor con medidas fijas sin cálculos complejos
+        d_qr = Drawing(75, 75)
         d_qr.add(qr_componente)
         
-        # Posicionamiento absoluto en la esquina inferior derecha (X=480, Y=48)
-        d_qr.drawOn(canvas, 480, 48)
-        
+        # Estampamos el QR en la esquina inferior derecha exacta (X=495pt, Y=48pt)
+        d_qr.drawOn(canvas, 495, 48)
+
+
         # 2. DIBUJO DEL PIE DE PÁGINA TRADICIONAL PERFECTAMENTE CENTRADO
         canvas.setStrokeColor(colors.lightgrey)
         canvas.setLineWidth(0.5)
