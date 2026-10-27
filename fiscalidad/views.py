@@ -15,7 +15,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 # Módulo crítico para dibujar el código QR oficial de VERI*FACTU
-from reportlab.graphics.barcode import qr
+from reportlab.graphics.barcode.qr import QrCode
 from reportlab.graphics.shapes import Drawing
 
 # Importaciones de tu propia aplicación relacional CRM
@@ -149,11 +149,11 @@ def descargar_factura_pdf(request, factura_id):
     def agregar_elementos_verifactu(canvas, doc):
         canvas.saveState()
         
-              # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Alta Definición Fija VERI*FACTU)
+        # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Directa e Infalible VERI*FACTU)
         importe_limpio = str(factura.total_factura).replace(" €", "").strip()
         fecha_limpia = str(factura.fecha_emision).strip()
         
-        url_aeat = (
+        url_sucia = (
             f"https://agenciatributaria.es?"
             f"nif={factura.autonomo.nif_nie}&"
             f"num={factura.numero_factura}&"
@@ -161,18 +161,15 @@ def descargar_factura_pdf(request, factura_id):
             f"importe={importe_limpio}"
         )
         
-        # Configuramos el componente con el grosor de barra exacto para que NO se amontone
-        qr_componente = qr.QrCodeWidget(url_aeat)
-        qr_componente.barWidth = 1.5
-        qr_componente.barHeight = 1.5
-        qr_componente.qrVersion = 1  # Fuerza el patrón más simple y nítido para cámaras móviles
+        # Codificación segura de URL para evitar que las cámaras se confundan
+        url_aeat = urllib.parse.quote(url_sucia, safe=':/?&=')
         
-        # SOLUCIÓN INDESTRUCTIBLE: Creamos el contenedor con medidas fijas sin cálculos complejos
-        d_qr = Drawing(75, 75)
-        d_qr.add(qr_componente)
+        # Generamos el QR fijando sus dimensiones métricas exactas (65x65 píxeles)
+        qr_code = QrCode(url_aeat, width=65, height=65)
         
-        # Estampamos el QR en la esquina inferior derecha exacta (X=495pt, Y=48pt)
-        d_qr.drawOn(canvas, 495, 48)
+        # SOLUCIÓN INDESTRUCTIBLE: Forzamos al canvas a dibujar el código de barras en su posición exacta
+        # Coordenadas en la esquina inferior derecha: X=505, Y=45 del borde de la hoja
+        qr_code.drawOn(canvas, 505, 45)
 
 
         # 2. DIBUJO DEL PIE DE PÁGINA TRADICIONAL PERFECTAMENTE CENTRADO
