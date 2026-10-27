@@ -150,24 +150,27 @@ def descargar_factura_pdf(request, factura_id):
     ]))
     story.append(tabla_factura)
 
-    # FUNCIÓN INTERNA DE LIENZO: Dibuja de forma fija el pie de página legal en cada hoja
+        # FUNCIÓN INTERNA DE LIENZO: Dibuja el pie de página legal centrado en cada hoja
     def agregar_pie_pagina_verifactu(canvas, doc):
         canvas.saveState()
         canvas.setStrokeColor(colors.lightgrey)
         canvas.setLineWidth(0.5)
-        # Dibujamos una línea divisoria gris por encima del pie de página
+        # Línea divisoria gris
         canvas.line(40, 45, 572, 45)
         
-        # Texto del Hash VERI*FACTU resaltado en Negrita
-        texto_hash = f"Huella Digital de Registro (VERI*FACTU ID): {factura.hash_verifactu}"
-        canvas.setFont("Helvetica-Bold", 8) # <--- Negrita e indicador de tamaño pequeño
-        canvas.drawString(40, 32, texto_hash)
+        # Ancho de página estándar letter es 612, la mitad exacta para centrar es 306
+        centro_hoja = 306
         
-        # Leyenda legal oficial obligatoria
+        # Texto del Hash VERI*FACTU resaltado en Negrita y Centrado
+        texto_hash = f"Huella Digital de Registro (VERI*FACTU ID): {factura.hash_verifactu}"
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.drawCentredString(centro_hoja, 32, texto_hash) # <--- Comando de centrado
+        
+        # Leyenda legal oficial obligatoria Centrada
         texto_legal = "Factura verificable en la sede electrónica de la AEAT o VERI*FACTU"
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.HexColor('#7f8c8d'))
-        canvas.drawString(40, 20, texto_legal)
+        canvas.drawCentredString(centro_hoja, 20, texto_legal) # <--- Comando de centrado
         
         canvas.restoreState()
 
