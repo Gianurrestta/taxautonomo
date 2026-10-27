@@ -55,6 +55,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
+    # EL ESCUDO DE SEGURIDAD VERI*FACTU ACTIVADO AL FINAL DE LA CADENA
+    'fiscalidad.middleware.BloqueoAccesoAdminMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
