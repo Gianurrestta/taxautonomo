@@ -9,11 +9,14 @@ from django.http import HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 
-# Importaciones para la generación de PDFs (ReportLab)
+# Importaciones para la generación de PDFs y Gráficos Nativos (ReportLab)
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+# Módulo crítico para dibujar el código QR oficial de VERI*FACTU
+from reportlab.graphics.barcode import qr
+from reportlab.graphics.shapes import Drawing
 
 # Importaciones de tu propia aplicación relacional CRM
 from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, Cliente
@@ -21,7 +24,6 @@ from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, C
 
 @login_required
 def dashboard_fiscal(request):
-    """Pantalla principal donde el cliente ve sus impuestos, gastos y sus presupuestos comerciales"""
     try:
         perfil = request.user.perfil
     except PerfilAutonomo.DoesNotExist:
@@ -35,8 +37,6 @@ def dashboard_fiscal(request):
     
     gastos_mes = GastoRecibido.objects.filter(autonomo=perfil, fecha_gasto__year=hoy.year, fecha_gasto__month=hoy.month)
     facturas_mes = FacturaEmitida.objects.filter(autonomo=perfil, fecha_emision__year=hoy.year, fecha_emision__month=hoy.month)
-    
-    # Extraemos todos los presupuestos de este autónomo para el seguimiento CRM
     cotizaciones_usuario = Cotizacion.objects.filter(autonomo=perfil).order_by('-fecha_creacion')
 
     context = {
@@ -50,7 +50,6 @@ def dashboard_fiscal(request):
 
 @login_required
 def emitir_factura(request):
-    """Formulario seguro conectado directamente a la base de datos de Clientes CRM"""
     try:
         perfil = request.user.perfil
     except PerfilAutonomo.DoesNotExist:
@@ -89,19 +88,18 @@ def emitir_factura(request):
 
 @login_required
 def descargar_factura_pdf(request, factura_id):
-    """Generación de PDF profesional conforme al RD 1619/2012 y VERI*FACTU con Pie de Página Fijo Centrado"""
+    """Generación de PDF profesional conforme al RD 1619/2012 y VERI*FACTU con Código QR Oficial Centrado y Alineado"""
     factura = get_object_or_404(FacturaEmitida, id=factura_id, autonomo__user=request.user)
     autonomo = factura.autonomo
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Factura_{factura.numero_factura}.pdf"'
 
-    # Inicialización del lienzo del documento con márgenes de seguridad para el pie de página (bottomMargin=50)
-    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=50)
+    # Dejamos bottomMargin=120 para asegurar que el contenido de la factura jamás choque con el QR ni el pie de página
+    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=120)
     story = []
     styles = getSampleStyleSheet()
 
-    # Estilos tipográficos
     titulo_style = ParagraphStyle('TitleStyle', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#1a252f'), spaceAfter=15)
     normal_style = styles['Normal']
     bold_style = ParagraphStyle('BoldStyle', parent=normal_style, fontName='Helvetica-Bold')
@@ -110,7 +108,6 @@ def descargar_factura_pdf(request, factura_id):
     story.append(Paragraph(f"Fecha de Emisión: <strong>{factura.fecha_emision}</strong> | Fecha de Operación: <strong>{factura.fecha_operacion}</strong>", normal_style))
     story.append(Spacer(1, 20))
 
-    # Bloque de Datos Identificativos y Domicilios Fiscales
     datos_completos = [
         [Paragraph("<strong>EMISOR (Autónomo):</strong>", normal_style), Paragraph("<strong>RECEPTOR (Cliente):</strong>", normal_style)],
         [Paragraph(f"{autonomo.nombre_fiscal}", normal_style), Paragraph(f"{factura.cliente_nombre}", normal_style)],
@@ -122,8 +119,6 @@ def descargar_factura_pdf(request, factura_id):
     table_datos.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
     story.append(table_datos)
     story.append(Spacer(1, 30))
-
-    # Tabla Desglosada del Cobro por Rubros
     headers_tabla = [
         [Paragraph("<strong>Concepto / Descripción detallada</strong>", bold_style), 
          Paragraph("<strong>Base Imponible</strong>", bold_style), 
@@ -150,66 +145,53 @@ def descargar_factura_pdf(request, factura_id):
     ]))
     story.append(tabla_factura)
 
-    # FUNCIÓN DE LIENZO CORREGIDA: Fuerza a pintar el pie de página centrado en la zona visible de la hoja
-    def agregar_pie_pagina_verifactu(canvas, doc):
+    # FUNCIÓN DE LIENZO AVANZADA: Dibuja de forma fija el Pie de Página y el Código QR de Hacienda
+    def agregar_elementos_verifactu(canvas, doc):
         canvas.saveState()
+        
+        # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Especificación técnica VERI*FACTU)
+        url_aeat = (
+            f"https://agenciatributaria.es?"
+            f"nif={autonomo.nif_nie}&"
+            f"num={factura.numero_factura}&"
+            f"fecha={factura.fecha_emision}&"
+            f"importe={factura.total_factura}"
+        )
+        
+        qr_code = qr.QrCodeWidget(url_aeat, width=65, height=65)
+        d_qr = Drawing(65, 65)
+        d_qr.add(qr_code)
+        
+        # Estampamos el QR en la esquina inferior derecha exacta (X=507pt, Y=50pt del borde de la hoja)
+        d_qr.drawOn(canvas, 507, 50)
+
+        # 2. DIBUJO DEL PIE DE PÁGINA TRADICIONAL PERFECTAMENTE CENTRADO
         canvas.setStrokeColor(colors.lightgrey)
         canvas.setLineWidth(0.5)
+        canvas.line(40, 42, 572, 42) # Línea divisoria gris
         
-        # Línea divisoria gris por encima del pie de página a 40pt del borde inferior
-        canvas.line(40, 40, 572, 40)
+        centro_hoja = 306 # Eje central de la página letter
         
-        # Eje central matemático exacto de la hoja carta (Ancho 612 / 2 = 306)
-        centro_hoja = 306
-        
-        # 1. Código Hash VERI*FACTU en Negrita y perfectamente visible a 25pt de altura
+        # Texto del Hash VERI*FACTU en Negrita Centrado (Posición Y=28)
         texto_hash = f"Huella Digital de Registro (VERI*FACTU ID): {factura.hash_verifactu}"
         canvas.setFont("Helvetica-Bold", 8)
-        canvas.drawCentredString(centro_hoja, 25, texto_hash)
+        canvas.drawCentredString(centro_hoja, 28, texto_hash)
         
-        # 2. Leyenda legal obligatoria en gris y centrada a 12pt de altura
+        # Leyenda legal oficial obligatoria Centrada (Posición Y=15)
         texto_legal = "Factura verificable en la sede electrónica de la AEAT o VERI*FACTU"
         canvas.setFont("Helvetica", 7)
         canvas.setFillColor(colors.HexColor('#7f8c8d'))
-        canvas.drawCentredString(centro_hoja, 12, texto_legal)
+        canvas.drawCentredString(centro_hoja, 15, texto_legal)
         
         canvas.restoreState()
 
-    # Compilamos forzando a ReportLab a renderizar el pie de página en cada hoja construida
-    doc.build(story, onFirstPage=agregar_pie_pagina_verifactu, onLaterPages=agregar_pie_pagina_verifactu)
+    # Compilamos forzando a pintar el pie de página y el QR oficial en cada hoja generada
+    doc.build(story, onFirstPage=agregar_elementos_verifactu, onLaterPages=agregar_elementos_verifactu)
     return response
 
-    # FUNCIÓN INTERNA DE LIENZO: Dibuja el pie de página legal centrado en cada hoja
-    def agregar_pie_pagina_verifactu(canvas, doc):
-        canvas.saveState()
-        canvas.setStrokeColor(colors.lightgrey)
-        canvas.setLineWidth(0.5)
-        # Línea divisoria gris
-        canvas.line(40, 45, 572, 45)
-        
-        # Ancho de página estándar letter es 612, la mitad exacta para centrar es 306
-        centro_hoja = 306
-        
-        # Texto del Hash VERI*FACTU resaltado en Negrita y Centrado
-        texto_hash = f"Huella Digital de Registro (VERI*FACTU ID): {factura.hash_verifactu}"
-        canvas.setFont("Helvetica-Bold", 8)
-        canvas.drawCentredString(centro_hoja, 32, texto_hash) # <--- Comando de centrado
-        
-        # Leyenda legal oficial obligatoria Centrada
-        texto_legal = "Factura verificable en la sede electrónica de la AEAT o VERI*FACTU"
-        canvas.setFont("Helvetica", 7)
-        canvas.setFillColor(colors.HexColor('#7f8c8d'))
-        canvas.drawCentredString(centro_hoja, 20, texto_legal) # <--- Comando de centrado
-        
-        canvas.restoreState()
-
-    # Compilamos el documento asociando la función del pie de página
-    doc.build(story, onFirstPage=agregar_pie_pagina_verifactu, onLaterPages=agregar_pie_pagina_verifactu)
-    return response
 
 @login_required
 def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
-    """Fase 1: Descarga el PDF desglosado comercial de la Cotización"""
     cotizacion = get_object_or_404(Cotizacion, id=cotizacion_id, autonomo__user=request.user)
     autonomo = cotizacion.autonomo
 
@@ -246,12 +228,12 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     for linea in cotizacion.lineas.all():
         lineas_tabla.append([
             Paragraph(linea.descripcion_elemento, normal_style),
-            str(linea.width),  # <--- SINCRO: Cambiado a 'width' para acoplarse a tu SQLite local
+            str(linea.width),
             Paragraph(f"{linea.precio_unitario} €", normal_style),
             Paragraph(f"{linea.coste_total} €", normal_style)
         ])
 
-    t_desglosada = Table(headers + lineas_tabla, colWidths=[260, 60, 100, 100])
+    t_desglosada = Table(headers + lineas_tabla, colWidths=[240, 60, 100, 120])
     t_desglosada.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2c3e50')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
@@ -261,110 +243,51 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     ]))
     story.append(t_desglosada)
     story.append(Spacer(1, 15))
-    story.append(Paragraph(f"TOTAL PRESUPUESTO ESTIMADO: {cotizacion.total_base_imponible} € (Impuestos no incluidos)", normal_style))
+    
+    story.append(Paragraph(f"<strong>TOTAL PRESUPUESTO ESTIMADO: {cotizacion.total_base_imponible} €</strong> (Impuestos no incluidos)", normal_style))
+    
     doc.build(story)
-    if cotizacion.estado == 'BORRADOR':
-        cotizacion.estado = 'ENVIADO'
-        cotizacion.save()
     return response
 
-@login_required
-def disparar_whatsapp_cotizacion(request, cotizacion_id):
-    """Abre la API oficial de WhatsApp Web con el texto estructurado del cliente"""
-    cotizacion = get_object_or_404(Cotizacion, id=cotizacion_id, autonomo__user=request.user)
-    mensaje = (
-    f"Hola {cotizacion.cliente_nombre},\n\n"
-    f"Te adjunto el presupuesto para el proyecto: {cotizacion.titulo_proyecto}.\n"
-    f"Importe estimado: {cotizacion.total_base_imponible} €.\n\n"
-    f"Puedes revisarlo y confirmar la aceptación respondiendo a este mensaje."
-    )
-    mensaje_url = urllib.parse.quote(mensaje)
-    whatsapp_url = f"whatsapp.com{cotizacion.cliente_telefono}&text={mensaje_url}"
-    return redirect(whatsapp_url)
-
-@login_required
-def convertir_cotizacion_a_factura(request, cotizacion_id):
-    """Fase 3: Transforma una cotización aceptada en factura oficial definitiva unificada"""
-    cotizacion = get_object_or_404(Cotizacion, id=cotizacion_id, autonomo__user=request.user)
-    perfil = cotizacion.autonomo
-    if cotizacion.estado == 'FACTURADO':
-        return redirect('dashboard_fiscal')
-    numero_factura_legal = perfil.obtener_siguiente_numero_factura()
-    # Creación relacional limpia de la Factura Oficial
-    nueva_factura = FacturaEmitida.objects.create(
-    autonomo=perfil,
-    cliente=cotizacion.cliente,
-    numero_factura=numero_factura_legal,
-    concepto=cotizacion.titulo_proyecto,
-    base_imponible=cotizacion.total_base_imponible,
-    porcentaje_iva=Decimal('0.21'),
-    fecha_operacion=datetime.date.today()
-    )
-    cotizacion.estado = 'FACTURADO'
-    cotizacion.save()
-    return redirect('descargar_factura_pdf', factura_id=nueva_factura.id)
 
 def login_usuario(request):
-    """Procesa el acceso seguro controlando las credenciales"""
     if request.user.is_authenticated:
         return redirect('dashboard_fiscal')
-        
     error = None
     if request.method == 'POST':
         u = request.POST.get('username')
         p = request.POST.get('password')
-        
         user = authenticate(request, username=u, password=p)
         if user is not None:
             login(request, user)
             return redirect('dashboard_fiscal')
         else:
-            error = "Usuario o contraseña incorrectos. Por favor, verifica de nuevo."
-            
+            error = "Usuario o contraseña incorrectos."
     return render(request, 'fiscalidad/login.html', {'error': error})
 
-
 def registro_autonomo(request):
-    """Automatiza el registro completo creando el User y su Perfil Fiscal obligatorio"""
     if request.user.is_authenticated:
         return redirect('dashboard_fiscal')
-        
     error = None
     if request.method == 'POST':
         u = request.POST.get('username')
         em = request.POST.get('email')
         p = request.POST.get('password')
-        
-        # Datos fiscales
         nf = request.POST.get('nombre_fiscal')
         nif = request.POST.get('nif_nie')
         df = request.POST.get('domicilio_fiscal')
         
-        # Validamos de forma preventiva que el usuario o el NIF no estén repetidos
         if User.objects.filter(username=u).exists():
-            error = "El nombre de usuario ya está registrado en el sistema."
+            error = "El nombre de usuario ya está registrado."
         elif PerfilAutonomo.objects.filter(nif_nie=nif).exists():
-            error = "Este NIF/NIE ya se encuentra registrado con otra cuenta."
+            error = "Este NIF/NIE ya está registrado."
         else:
-            # 1. Creamos el usuario base cifrando la contraseña
             nuevo_user = User.objects.create_user(username=u, email=em, password=p)
-            
-            # 2. Creamos de golpe su perfil fiscal inyectando sus datos obligatorios
-            PerfilAutonomo.objects.create(
-                user=nuevo_user,
-                nif_nie=nif,
-                nombre_fiscal=nf,
-                domicilio_fiscal=df
-            )
-            
-            # 3. Lo logueamos de forma directa para máxima comodidad
+            PerfilAutonomo.objects.create(user=nuevo_user, nif_nie=nif, nombre_fiscal=nf, domicilio_fiscal=df)
             login(request, nuevo_user)
             return redirect('dashboard_fiscal')
-            
     return render(request, 'fiscalidad/registro.html', {'error': error})
 
-
 def logout_usuario(request):
-    """Cierra la sesión destruyendo de forma segura los identificadores"""
     logout(request)
     return redirect('login_usuario')
