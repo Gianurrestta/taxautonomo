@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 
 class PerfilAutonomo(models.Model):
-    """Información fiscal y mercantil obligatoria del autónomo emisor en España"""
+    """Información fiscal y mercantil obligatoria del autónomo emisor con candado de verificación"""
     REGIMENES = [
         ('EDV', 'Estimación Directa Simplificada'),
         ('EDN', 'Estimación Directa Normal'),
@@ -16,10 +16,15 @@ class PerfilAutonomo(models.Model):
     nif_nie = models.CharField(max_length=15, unique=True, verbose_name="NIF o NIE")
     nombre_fiscal = models.CharField(max_length=150)
     domicilio_fiscal = models.CharField(max_length=255, default='', help_text="Dirección obligatoria ante la AEAT")
-    telefono = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True, help_text="Formato internacional, ej: +34600000000")
     actividad_profesional = models.CharField(max_length=100, help_text="Ej: Desarrollo Web, Asesoría Jurídica", blank=True, null=True)
     logo = models.ImageField(upload_to="logos_autonomos/", blank=True, null=True)
     regimen_fiscal = models.CharField(max_length=3, choices=REGIMENES, default='EDV')
+
+    # CANDADOS DE SEGURIDAD EXIGIDOS PARA VERIFICACIÓN DE IDENTIDAD
+    cuenta_verificada = models.BooleanField(default=False, help_text="Habilita o congela el acceso al Dashboard")
+    codigo_verificacion_email = models.CharField(max_length=6, blank=True, null=True)
+    codigo_verificacion_sms = models.CharField(max_length=6, blank=True, null=True)
 
     def obtener_siguiente_numero_factura(self, tipo_serie='ORDINARIA') -> str:
         año_actual = datetime.date.today().year
@@ -45,7 +50,6 @@ class PerfilAutonomo(models.Model):
 
     def __str__(self):
         return f"{self.nombre_fiscal} ({self.nif_nie})"
-
 
 class Cliente(models.Model):
     """MÓDULO 1: Directorio y Base de Datos CRM de Clientes del Autónomo"""

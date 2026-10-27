@@ -41,12 +41,15 @@ def convertir_cotizacion_a_factura_directo(request, cotizacion_id):
     return redirect('descargar_factura_pdf', factura_id=nueva_factura.id)
 
 
-# MAPEO GLOBAL DE RUTAS (MÓDULO 3 INTEGRADO)
+# MAPEO GLOBAL DE RUTAS (VERIFICACIÓN INTEGRADA)
 urlpatterns = [
     # Módulo de Autenticación Multiusuario
     path('login/', views.login_usuario, name='login_usuario'),
     path('registro/', views.registro_autonomo, name='registro_autonomo'),
     path('logout/', views.logout_usuario, name='logout_usuario'),
+    
+    # NUEVA RUTA: Pantalla intermedia de verificación doble factor
+    path('verificar-cuenta/', views.verificar_cuenta_view, name='verificar_cuenta_view'),
 
     # Vistas de Gestión Principal protegidas por @login_required
     path('', views.dashboard_fiscal, name='dashboard_fiscal'),

@@ -1,6 +1,7 @@
 import datetime
 from decimal import Decimal
 import urllib.parse
+import random
 
 # Importaciones nativas de Django
 from django.shortcuts import render, redirect, get_object_or_404
@@ -298,3 +299,35 @@ def registro_autonomo(request):
 def logout_usuario(request):
     logout(request)
     return redirect('login_usuario')
+
+@login_required
+def verificar_cuenta_view(request):
+    """Módulo de Identidad: Valida los códigos de 6 dígitos obligatorios para desbloquear la plataforma"""
+    perfil = request.user.perfil
+    
+    # Si la cuenta ya está verificada por seguridad, lo mandamos directo al panel
+    if perfil.cuenta_verificada:
+        return redirect('dashboard_fiscal')
+        
+    error = None
+    if request.method == 'POST':
+        c_email = request.POST.get('codigo_email', '').strip()
+        c_sms = request.POST.get('codigo_sms', '').strip()
+        
+        # Validación exacta céntimo a céntimo de las variables de identidad
+        if perfil.codigo_verificacion_email == c_email and perfil.codigo_verificacion_sms == c_sms:
+            perfil.cuenta_verificada = True
+            # Limpiamos los códigos de la base de datos por seguridad de un solo uso
+            perfil.codigo_verificacion_email = None
+            perfil.codigo_verificacion_sms = None
+            perfil.save()
+            return redirect('dashboard_fiscal')
+        else:
+            error = "Los códigos introducidos no coinciden con los enviados. Inténtalo de nuevo."
+
+    context = {
+        'error': error,
+        'correo_destino': request.user.email,
+        'telefono_destino': perfil.telefono or 'No registrado'
+    }
+    return render(request, 'fiscalidad/verificar_cuenta.html', context)
