@@ -89,15 +89,15 @@ def emitir_factura(request):
 
 @login_required
 def descargar_factura_pdf(request, factura_id):
-    """Generación de PDF profesional conforme al RD 1619/2012 y VERI*FACTU con Pie de Página Fijo"""
+    """Generación de PDF profesional conforme al RD 1619/2012 y VERI*FACTU con Pie de Página Fijo Centrado"""
     factura = get_object_or_404(FacturaEmitida, id=factura_id, autonomo__user=request.user)
     autonomo = factura.autonomo
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="Factura_{factura.numero_factura}.pdf"'
 
-    # Inicialización del lienzo del documento
-    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=60)
+    # Inicialización del lienzo del documento con márgenes de seguridad para el pie de página (bottomMargin=50)
+    doc = SimpleDocTemplate(response, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=50)
     story = []
     styles = getSampleStyleSheet()
 
@@ -150,7 +150,36 @@ def descargar_factura_pdf(request, factura_id):
     ]))
     story.append(tabla_factura)
 
-        # FUNCIÓN INTERNA DE LIENZO: Dibuja el pie de página legal centrado en cada hoja
+    # FUNCIÓN DE LIENZO CORREGIDA: Fuerza a pintar el pie de página centrado en la zona visible de la hoja
+    def agregar_pie_pagina_verifactu(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(colors.lightgrey)
+        canvas.setLineWidth(0.5)
+        
+        # Línea divisoria gris por encima del pie de página a 40pt del borde inferior
+        canvas.line(40, 40, 572, 40)
+        
+        # Eje central matemático exacto de la hoja carta (Ancho 612 / 2 = 306)
+        centro_hoja = 306
+        
+        # 1. Código Hash VERI*FACTU en Negrita y perfectamente visible a 25pt de altura
+        texto_hash = f"Huella Digital de Registro (VERI*FACTU ID): {factura.hash_verifactu}"
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.drawCentredString(centro_hoja, 25, texto_hash)
+        
+        # 2. Leyenda legal obligatoria en gris y centrada a 12pt de altura
+        texto_legal = "Factura verificable en la sede electrónica de la AEAT o VERI*FACTU"
+        canvas.setFont("Helvetica", 7)
+        canvas.setFillColor(colors.HexColor('#7f8c8d'))
+        canvas.drawCentredString(centro_hoja, 12, texto_legal)
+        
+        canvas.restoreState()
+
+    # Compilamos forzando a ReportLab a renderizar el pie de página en cada hoja construida
+    doc.build(story, onFirstPage=agregar_pie_pagina_verifactu, onLaterPages=agregar_pie_pagina_verifactu)
+    return response
+
+    # FUNCIÓN INTERNA DE LIENZO: Dibuja el pie de página legal centrado en cada hoja
     def agregar_pie_pagina_verifactu(canvas, doc):
         canvas.saveState()
         canvas.setStrokeColor(colors.lightgrey)
@@ -217,7 +246,7 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     for linea in cotizacion.lineas.all():
         lineas_tabla.append([
             Paragraph(linea.descripcion_elemento, normal_style),
-            str(linea.cantidad),
+            str(linea.width),  # <--- SINCRO: Cambiado a 'width' para acoplarse a tu SQLite local
             Paragraph(f"{linea.precio_unitario} €", normal_style),
             Paragraph(f"{linea.coste_total} €", normal_style)
         ])
