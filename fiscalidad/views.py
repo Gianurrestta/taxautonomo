@@ -15,7 +15,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 # Módulo crítico para dibujar el código QR oficial de VERI*FACTU
-from reportlab.graphics.barcode import qr
+from reportlab.graphics.barcode.qr import QrCode
 from reportlab.graphics.shapes import Drawing
 
 # Importaciones de tu propia aplicación relacional CRM
@@ -149,7 +149,7 @@ def descargar_factura_pdf(request, factura_id):
     def agregar_elementos_verifactu(canvas, doc):
         canvas.saveState()
         
-        # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Especificación técnica VERI*FACTU Calibrada)
+      # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Versión Directa sobre Lienzo VERI*FACTU)
         url_aeat = (
             f"https://agenciatributaria.es?"
             f"nif={autonomo.nif_nie}&"
@@ -158,15 +158,12 @@ def descargar_factura_pdf(request, factura_id):
             f"importe={factura.total_factura}"
         )
         
-        # Generamos el widget QR con un grosor de barra nítido y óptimo
-        qr_code = qr.QrCodeWidget(url_aeat, barWidth=1.5, barHeight=1.5)
+        # Generamos el QR de forma directa fijando sus dimensiones (65 píxeles de ancho y alto)
+        qr_code = QrCode(url_aeat, width=65, height=65)
         
-        # SOLUCIÓN: Damos un contenedor amplio de 100x100 para que el QR NO se recorte ni se oculte
-        d_qr = Drawing(100, 100)
-        d_qr.add(qr_code)
-        
-        # Estampamos el lienzo en la esquina inferior derecha exacta (X=470pt, Y=45pt del borde de la hoja)
-        d_qr.drawOn(canvas, 470, 45)
+        # SOLUCIÓN INDESTRUCTIBLE: Dibujamos el QR directamente en el canvas sin intermediarios
+        # Coordenadas exactas en la esquina inferior derecha: X=505, Y=45
+        qr_code.drawOn(canvas, 505, 45)
 
         # 2. DIBUJO DEL PIE DE PÁGINA TRADICIONAL PERFECTAMENTE CENTRADO
         canvas.setStrokeColor(colors.lightgrey)
