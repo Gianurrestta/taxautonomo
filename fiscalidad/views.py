@@ -149,7 +149,7 @@ def descargar_factura_pdf(request, factura_id):
     def agregar_elementos_verifactu(canvas, doc):
         canvas.saveState()
         
-        # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Especificación técnica VERI*FACTU)
+        # 1. CONSTRUCCIÓN DEL CÓDIGO QR OFICIAL (Especificación técnica VERI*FACTU Calibrada)
         url_aeat = (
             f"https://agenciatributaria.es?"
             f"nif={autonomo.nif_nie}&"
@@ -158,12 +158,15 @@ def descargar_factura_pdf(request, factura_id):
             f"importe={factura.total_factura}"
         )
         
+        # Generamos el widget QR con un grosor de barra nítido y óptimo
         qr_code = qr.QrCodeWidget(url_aeat, barWidth=1.5, barHeight=1.5)
-        d_qr = Drawing(65, 65)
+        
+        # SOLUCIÓN: Damos un contenedor amplio de 100x100 para que el QR NO se recorte ni se oculte
+        d_qr = Drawing(100, 100)
         d_qr.add(qr_code)
         
-        # Estampamos el QR en la esquina inferior derecha exacta (X=507pt, Y=50pt del borde de la hoja)
-        d_qr.drawOn(canvas, 507, 50)
+        # Estampamos el lienzo en la esquina inferior derecha exacta (X=470pt, Y=45pt del borde de la hoja)
+        d_qr.drawOn(canvas, 470, 45)
 
         # 2. DIBUJO DEL PIE DE PÁGINA TRADICIONAL PERFECTAMENTE CENTRADO
         canvas.setStrokeColor(colors.lightgrey)
