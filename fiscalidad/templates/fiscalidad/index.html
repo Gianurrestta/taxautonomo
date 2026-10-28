@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma Todo-en-Uno para Autónomos | VERI*FACTU</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #2ecc71; --text: #333; --bg: #f8fafc; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: var(--text); background: var(--bg); line-height: 1.6; }
+        
+        /* Navbar */
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .logo { font-size: 22px; font-weight: bold; color: var(--primary); }
+        .logo span { color: var(--accent); }
+        .nav-links .btn-login { text-decoration: none; color: var(--primary); font-weight: bold; margin-right: 20px; }
+        .btn { display: inline-block; background: var(--accent); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; transition: background 0.2s; }
+        .btn:hover { background: #27ae60; }
+
+        /* Hero Section */
+        .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 1200px; margin: 60px auto; padding: 0 4px; align-items: center; }
+        .hero-text h1 { font-size: 48px; color: var(--primary); line-height: 1.2; margin-bottom: 20px; }
+        .hero-text p { font-size: 18px; color: #64748b; margin-bottom: 30px; }
+        
+        /* Formulario de Captación */
+        .cta-form { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .cta-form h3 { margin-top: 0; color: var(--primary); font-size: 22px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; }
+        .btn-full { width: 100%; border: none; font-size: 16px; cursor: pointer; }
+
+        /* Características (Pilares de Utilidad) */
+        .features { max-width: 1200px; margin: 100px auto; padding: 0 40px; text-align: center; }
+        .features h2 { font-size: 32px; color: var(--primary); margin-bottom: 50px; }
+        .grid-features { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; }
+        .f-card { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); text-align: left; border-top: 4px solid var(--accent); }
+        .f-card h3 { color: var(--primary); margin-top: 0; }
+        .f-card p { color: #64748b; font-size: 15px; }
+
+        /* Footer */
+        footer { text-align: center; padding: 40px; background: var(--primary); color: white; margin-top: 8px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <!-- Menú Superior -->
+    <nav class="navbar">
+        <div class="logo">Plataforma<span>Autónomos</span></div>
+        <div class="nav-links">
+            <a href="{% url 'login_usuario' %}" class="btn-login">🔑 Acceso Clientes</a>
+            <a href="{% url 'registro_autonomo' %}" class="btn">Empezar Gratis</a>
+        </div>
+    </nav>
+
+    <!-- Sección Principal (Hero) -->
+    header class="hero">
+        <div class="hero-text">
+            <h1>Lleva todo tu negocio en el bolsillo de forma legal.</h1>
+            <p>La primera solución integral en España que combina facturación oficial inalterable, tramitación de alta express y cobros integrados sin necesidad de datáfonos físicos.</p>
+        </div>
+        
+        <!-- Formulario de Validación de Clientes -->
+        <div class="cta-form">
+            <h3>🚀 Reserva tu plaza de Validación</h3>
+            <p style="font-size:13px; color:#64748b; margin-top:-10px;">Únete a las pruebas de las próximas semanas y digitaliza tu actividad.</p>
+            <form method="POST" action="{% url 'registro_autonomo' %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>¿Qué necesitas primero?</label>
+                    <select name="interes_servicio" required>
+                        <option value="ALTA">Quiero realizar mi Alta de Autónomo Directa</option>
+                        <option value="FACTURA">Ya soy autónomo, busco facturación VERI*FACTU</option>
+                        <option value="DATAFONO">Me interesa usar mi móvil como Datáfono</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Nombre de Usuario comercial:</label>
+                    <input type="text" name="username" placeholder="Ej: carlos_diseno" required>
+                </div>
+                <div class="form-group">
+                    <label>Correo Electrónico:</label>
+                    <input type="email" name="email" placeholder="correo@ejemplo.com" required>
+                </div>
+                <button type="submit" class="btn btn-full">Solicitar Acceso y Registro</button>
+            </form>
+        </div>
+    </header>
+
+    <!-- Los 3 Pilares del Software -->
+    <section class="features">
+        <h2>Diseñado para la Máxima Utilidad Operativa</h2>
+        <div class="grid-features">
+            <div class="f-card">
+                <h3>⚖️ Certificado VERI*FACTU</h3>
+                <p>Cumple estrictamente con la Ley Antifraude española. Facturas emitidas con códigos QR y huellas digitales SHA-256 inalterables, listas para la sede electrónica de la AEAT.</p>
+            </div>
+            <div class="f-card" style="border-top-color: #3498db;">
+                <h3>⚡ Alta Express de Autónomos</h3>
+                <p>Olvídate de las gestorías tradicionales. Realiza tu tramitación de alta censal y conexión a la Seguridad Social de manera digitalizada y guiada en pocos minutos.</p>
+            </div>
+            <div class="f-card" style="border-top-color: #9b59b6;">
+                <h3>💳 Tu Móvil es tu Datáfono</h3>
+                <p><strong>[Próximamente]</strong> Tecnología SoftPOS integrada. Cobra a tus clientes acercando su tarjeta de débito o crédito directamente a la parte trasera de tu smartphone.</p>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Plataforma de Autónomos Homologada. Cumplimiento regulatorio estricto AEAT.</p>
+    </footer>
+
+</body>
+</html>

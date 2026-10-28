@@ -22,6 +22,11 @@ from reportlab.graphics.shapes import Drawing
 # Importaciones de tu propia aplicación relacional CRM
 from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, Cliente
 
+def landing_page(request):
+    """Muestra la Landing Page de presentación comercial de la plataforma"""
+    if request.user.is_authenticated:
+        return redirect('dashboard_fiscal')
+    return render(request, 'fiscalidad/index.html')
 
 @login_required
 def dashboard_fiscal(request):
