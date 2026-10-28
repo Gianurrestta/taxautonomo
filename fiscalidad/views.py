@@ -274,8 +274,10 @@ def login_usuario(request):
     return render(request, 'fiscalidad/login.html', {'error': error})
 
 def registro_autonomo(request):
+    """Automatiza el registro completo generando los códigos aleatorios obligatorios de identidad"""
     if request.user.is_authenticated:
         return redirect('dashboard_fiscal')
+        
     error = None
     if request.method == 'POST':
         u = request.POST.get('username')
@@ -284,6 +286,7 @@ def registro_autonomo(request):
         nf = request.POST.get('nombre_fiscal')
         nif = request.POST.get('nif_nie')
         df = request.POST.get('domicilio_fiscal')
+        tel = request.POST.get('telefono_registro') # <--- SINCRO: Nombre exacto del input HTML
         
         if User.objects.filter(username=u).exists():
             error = "El nombre de usuario ya está registrado."
@@ -291,9 +294,32 @@ def registro_autonomo(request):
             error = "Este NIF/NIE ya está registrado."
         else:
             nuevo_user = User.objects.create_user(username=u, email=em, password=p)
-            PerfilAutonomo.objects.create(user=nuevo_user, nif_nie=nif, nombre_fiscal=nf, domicilio_fiscal=df)
+            
+            # MATEMÁTICA PURA DE SEGURIDAD: Generamos dos códigos secretos de 6 dígitos independientes
+            cod_email = f"{random.randint(100000, 999999)}"
+            cod_sms = f"{random.randint(100000, 999999)}"
+            
+            perfil = PerfilAutonomo.objects.create(
+                user=nuevo_user,
+                nif_nie=nif,
+                nombre_fiscal=nf,
+                domicilio_fiscal=df,
+                telefono=tel, # <--- SINCRO: Guarda la variable tel en la columna de la base de datos
+                cuenta_verificada=False,
+                codigo_verificacion_email=cod_email,
+                codigo_verificacion_sms=cod_sms
+            )
+            
+            # SIMULACIÓN TÉCNICA: Despachamos las alertas directamente hacia tu terminal de comandos
+            print("\n" + "="*60)
+            print(f" SIMULADOR DE PASARELA DE SEGURIDAD DE DOBLE FACTOR")
+            print(f" Enviando SMS al número: {tel} -> CÓDIGO SECRETO: [{cod_sms}]")
+            print(f" Enviando Email al correo: {em} -> CÓDIGO SECRETO: [{cod_email}]")
+            print("="*60 + "\n")
+            
             login(request, nuevo_user)
-            return redirect('dashboard_fiscal')
+            return redirect('verificar_cuenta_view')
+            
     return render(request, 'fiscalidad/registro.html', {'error': error})
 
 def logout_usuario(request):
