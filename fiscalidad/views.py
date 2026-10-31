@@ -362,3 +362,149 @@ def verificar_cuenta_view(request):
         'telefono_destino': perfil.telefono or 'No registrado'
     }
     return render(request, 'fiscalidad/verificar_cuenta.html', context)
+
+    # ==============================================================================
+    # PROCESO DE TRAMITACIÓN DE ALTA DE AUTÓNOMOS (manual)
+    # ==============================================================================
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import SolicitudAlta
+
+def asistente_alta_autonomo(request):
+    """
+    Asistente de alta express paso a paso.
+    Fase inicial: Captura de datos puramente manual para evitar fallos de lectura.
+    """
+    request.session['alta_paso_actual'] = 1 
+    # Si el usuario ya está autenticado, usamos la base de datos; si no, la sesión temporal
+    if request.user.is_authenticated:
+        solicitud, created = SolicitudAlta.objects.get_or_create(
+            usuario=request.user,
+            defaults={'estado': 'BORRADOR', 'paso_actual': 1}
+        )
+        paso = solicitud.paso_actual
+    else:
+        paso = request.session.get('alta_paso_actual', 1)
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        
+        # --- LÓGICA DE NAVEGACIÓN HACIA ATRÁS ---
+        if accion == 'retroceder' and paso > 1:
+            if request.user.is_authenticated:
+                solicitud.paso_actual -= 1
+                solicitud.save()
+            else:
+                request.session['alta_paso_actual'] = paso - 1
+            return redirect('asistente_alta')
+            
+        # --- PROCESAMIENTO DEL PASO 1: DATOS PERSONALES (MANUAL) ---
+        if paso == 1:
+            nif_nie = request.POST.get('nif_nie', '').strip().upper()
+            nombre = request.POST.get('nombre', '').strip().upper()
+            apellidos = request.POST.get('apellidos', '').strip().upper()
+            fecha_nacimiento = request.POST.get('fecha_nacimiento', '')
+            telefono = request.POST.get('telefono', '').strip()
+
+            # Validación estricta en el servidor para evitar datos vacíos antes de enviar a Hacienda
+            if not nif_nie or not nombre or not apellidos or not telefono:
+                messages.error(request, "Por favor, rellena todos los campos obligatorios (*).")
+                return redirect('asistente_alta')
+
+            # Guardamos los datos recogidos del formulario
+            if not request.user.is_authenticated:
+                request.session['alta_nif_nie'] = nif_nie
+                request.session['alta_nombre'] = nombre
+                request.session['alta_apellidos'] = apellidos
+                request.session['alta_fecha_nacimiento'] = fecha_nacimiento
+                request.session['alta_telefono'] = telefono
+                request.session['alta_paso_actual'] = 2
+            else:
+                solicitud.nif_nie = nif_nie
+                solicitud.nombre = nombre
+                solicitud.apellidos = apellidos
+                solicitud.telefono = telefono
+                if fecha_nacimiento:
+                    solicitud.fecha_nacimiento = fecha_nacimiento
+                solicitud.paso_actual = 2
+                solicitud.save()
+
+            messages.success(request, "Datos personales guardados correctamente. ¡Continuamos!")
+            return redirect('asistente_alta')
+
+        # --- PROCESAMIENTO DEL PASO 2: DOMICILIO FISCAL ---
+        elif paso == 2:
+            direccion = request.POST.get('direccion_fiscal', '').strip()
+            cp = request.POST.get('codigo_postal', '').strip()
+            localidad = request.POST.get('localidad', '').strip()
+            provincia = request.POST.get('provincia', '').strip()
+
+            if not direccion or not cp or not localidad or not provincia:
+                messages.error(request, "Por favor, completa todos los campos de tu dirección.")
+                return redirect('asistente_alta')
+
+            if not request.user.is_authenticated:
+                request.session['alta_direccion_fiscal'] = direccion
+                request.session['alta_codigo_postal'] = cp
+                request.session['alta_localidad'] = localidad
+                request.session['alta_provincia'] = provincia
+                request.session['alta_paso_actual'] = 3
+            else:
+                solicitud.direccion_fiscal = direccion
+                solicitud.codigo_postal = cp
+                solicitud.localidad = localidad
+                solicitud.provincia = provincia
+                solicitud.paso_actual = 3
+                solicitud.save()
+
+            messages.success(request, "Domicilio fiscal guardado correctamente.")
+            return redirect('asistente_alta')
+
+    # Recomponemos los datos para mantener los campos rellenos si el usuario vuelve atrás
+    if request.user.is_authenticated:
+        datos_formulario = {
+            'telefono': solicitud.telefono,
+            'nif_nie': solicitud.nif_nie,
+            'nombre': solicitud.nombre,
+            'apellidos': solicitud.apellidos,
+            'fecha_nacimiento': str(solicitud.fecha_nacimiento) if solicitud.fecha_nacimiento else '',
+            'direccion_fiscal': solicitud.direccion_fiscal,
+            'codigo_postal': solicitud.codigo_postal,
+            'localidad': solicitud.localidad,
+            'provincia': solicitud.provincia,
+        }
+    else:
+        datos_formulario = {
+            'telefono': request.session.get('alta_telefono', ''),
+            'nif_nie': request.session.get('alta_nif_nie', ''),
+            'nombre': request.session.get('alta_nombre', ''),
+            'apellidos': request.session.get('alta_apellidos', ''),
+            'fecha_nacimiento': request.session.get('alta_fecha_nacimiento', ''),
+            'direccion_fiscal': request.session.get('alta_direccion_fiscal', ''),
+            'codigo_postal': request.session.get('alta_codigo_postal', ''),
+            'localidad': request.session.get('alta_localidad', ''),
+            'provincia': request.session.get('alta_provincia', ''),
+        }
+
+    context = {
+        'paso': paso,
+        'solicitud': datos_formulario,
+        'mutuas': SolicitudAlta.MUTUAS_CHOICES if hasattr(SolicitudAlta, 'MUTUAS_CHOICES') else []
+    }
+    return render(request, f'fiscalidad/alta_paso_{paso}.html', context)
+
+
+def simular_extraccion_ocr_api(ruta_archivo):
+    """
+    Simulación del servicio API de lectura e identidad segura (Signaturit/Ivnosys).
+    Devuelve los datos estructurados del DNI de forma instantánea.
+    """
+    # En producción, aquí harías un requests.post() enviando el archivo DNI binario
+    return {
+        "status": "success",
+        "documento_identidad": "12345678Z",
+        "nombre": "Juan",
+        "apellidos": "García Pérez",
+        "fecha_nacimiento": "1990-05-15",
+    }

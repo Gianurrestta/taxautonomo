@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alta Express - Paso 1</title>
+    <link rel="stylesheet" href="https://bootstrapcdn.com">
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        body { background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5" style="max-width: 750px;">
+    <!-- Barra de progreso real al 20% -->
+    <div class="progress mb-4" style="height: 25px; border-radius: 8px; box-shadow: inset 0 1px 3px rgba(0,0,0,.2);">
+        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" style="width: 20%; font-weight: bold; font-size: 14px;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100">Paso 1 de 5</div>
+    </div>
+
+    <div class="card shadow-lg border-0 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-3" style="border-top-left-radius: 8px; border-top-right-radius: 8px;">
+            <h3 class="my-1" style="font-size: 24px; font-weight: 500;">Paso 1: Datos Personales Oficiales</h3>
+        </div>
+        
+        <div class="card-body p-4 bg-white">
+            <!-- Cuadro explicativo empático -->
+            <div class="alert alert-info shadow-sm" role="alert" style="border-left: 5px solid #2980b9; border-radius: 6px; background-color: #ebf5fb; color: #2c3e50;">
+                <h5 class="alert-heading font-weight-bold" style="color: #2980b9; font-size: 18px; margin-bottom: 8px;">📋 Introduce tus datos tal como aparecen en tu documento</h5>
+                <p style="font-size: 14.5px; line-height: 1.5; margin-bottom: 0;">Para tramitar tu alta oficial ante el Gobierno de España, introduce tus datos exactamente como figuran en tu DNI, NIE o tarjeta oficial. Esto evitará cualquier rechazo informático en los servidores de Hacienda y la Seguridad Social.</p>
+            </div>
+
+            <!-- Alertas de Django -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} font-weight-bold" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulario de Entrada Manual -->
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+
+                <!-- Documento de Identidad -->
+                <div class="form-group mb-3">
+                    <label for="nif_nie" class="font-weight-bold">NIF o NIE Oficial *</label>
+                    <input type="text" name="nif_nie" id="nif_nie" class="form-control form-control-lg" placeholder="Ej: 12345678Z o Y1234567X" value="{{ solicitud.nif_nie }}" required style="border-radius: 6px;">
+                    <small class="text-muted">Si tienes NIE, introduce la letra inicial, los números y la letra final.</small>
+                </div>
+
+                <!-- Nombre y Apellidos -->
+                <div class="row">
+                    <div class="col-md-6 form-group mb-3">
+                        <label for="nombre" class="font-weight-bold">Nombre *</label>
+                        <input type="text" name="nombre" id="nombre" class="form-control form-control-lg" value="{{ solicitud.nombre }}" required style="border-radius: 6px;">
+                    </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label for="apellidos" class="font-weight-bold">Apellidos Completos *</label>
+                        <input type="text" name="apellidos" id="apellidos" class="form-control form-control-lg" value="{{ solicitud.apellidos }}" required style="border-radius: 6px;">
+                    </div>
+                </div>
+
+                <!-- Fecha de Nacimiento y Teléfono -->
+                <div class="row">
+                    <div class="col-md-6 form-group mb-3">
+                        <label for="fecha_nacimiento" class="font-weight-bold">Fecha de Nacimiento</label>
+                        <input type="date" name="fecha_nacimiento" id="fecha_nacimiento" class="form-control form-control-lg" value="{{ solicitud.fecha_nacimiento }}" style="border-radius: 6px;">
+                    </div>
+                    <div class="col-md-6 form-group mb-3">
+                        <label for="telefono" class="font-weight-bold">Teléfono Móvil Español *</label>
+                        <input type="tel" name="telefono" id="telefono" class="form-control form-control-lg" placeholder="Ej: 600123456" value="{{ solicitud.telefono }}" required style="border-radius: 6px;">
+                        <small class="text-muted">Necesario para recibir los SMS oficiales de confirmación.</small>
+                    </div>
+                </div>
+
+                <!-- Botonera de Navegación -->
+                <div class="d-flex justify-content-between align-items-center mt-5" style="border-top: 1px solid #eee; padding-top: 20px;">
+                    <a href="{% url 'landing_page' %}" class="btn btn-link text-muted p-0" style="font-size: 15px; text-decoration: none;">❌ Cancelar y salir</a>
+                    <button type="submit" name="accion" value="avanzar" class="btn btn-success btn-lg px-5 shadow-sm font-weight-bold text-uppercase" style="font-size: 15px; border-radius: 6px;">Guardar y Continuar ➡️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

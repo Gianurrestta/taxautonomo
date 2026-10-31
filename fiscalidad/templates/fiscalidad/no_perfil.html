@@ -1,0 +1,36 @@
+{% extends "fiscalidad/base.html" %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 750px;">
+    <div class="card shadow-lg border-0 rounded-lg mt-5">
+        <div class="card-body p-5 text-center bg-white rounded-lg">
+            <div class="mb-4 text-primary">
+                <i class="fas fa-user-shield fa-4x text-muted"></i>
+            </div>
+            
+            <h2 class="font-weight-bold mb-3" style="color: #2c3e50;">¡Hola! Aún no tienes un Perfil Activo</h2>
+            
+            <p class="text-muted mb-4" style="font-size: 16px; line-height: 1.6;">
+                Para poder acceder a tu cuadro de mando fiscal, emitir facturas legales conformes a la normativa española y configurar los cobros automáticos desde tu móvil, necesitas estar registrado como autónomo en nuestra plataforma.
+            </p>
+
+            <div class="alert alert-light border p-3 mb-5 bg-light text-left" style="border-radius: 8px;">
+                <h6 class="font-weight-bold text-dark mb-2">🚀 ¿Qué puedes hacer ahora?</h6>
+                <ul class="mb-0 small text-secondary" style="padding-left: 20px; line-height: 1.6;">
+                    <li><strong>Si ya eres autónomo en España:</strong> Conecta tu perfil existente rellenando tus datos censales desde tu panel de configuración.</li>
+                    <li><strong>Si quieres darte de alta ahora:</strong> Utiliza nuestro asistente express para tramitar tu alta en Hacienda y la Seguridad Social de forma 100% digital.</li>
+                </ul>
+            </div>
+
+            <div class="d-sm-flex justify-content-center gap-3">
+                <a href="#" class="btn btn-outline-secondary btn-lg px-4 mb-2 mb-sm-0 mx-2 font-weight-bold text-uppercase" style="font-size: 14px;">
+                    Configurar Perfil Existente
+                </a>
+                <a href="{% url 'asistente_alta' %}" class="btn btn-success btn-lg px-4 mx-2 font-weight-bold text-uppercase shadow-sm">
+                    <i class="fas fa-rocket mr-2"></i> alta como autonomo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -63,4 +63,5 @@ urlpatterns = [
     # Automatizaciones comerciales
     path('cotizacion/whatsapp/<int:cotizacion_id>/', enviar_whatsapp_directo, name='enviar_whatsapp_cotizacion'),
     path('cotizacion/convertir/<int:cotizacion_id>/', convertir_cotizacion_a_factura_directo, name='convertir_a_factura'),
+    path('alta-autonomo/', views.asistente_alta_autonomo, name='asistente_alta'),
 ]

@@ -143,3 +143,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Seguridad Relacional: Envía a los usuarios no logueados a la pantalla de login
 LOGIN_URL = 'login_usuario'
+
+# ==============================================================================
+# CONFIGURACIÓN DE ALMACENAMIENTO DE ARCHIVOS (MEDIA)
+# ==============================================================================
+import os
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

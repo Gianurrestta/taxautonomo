@@ -97,6 +97,11 @@
             <div class="f-card" style="border-top-color: #3498db;">
                 <h3>⚡ Alta Express de Autónomos</h3>
                 <p>Olvídate de las gestorías tradicionales. Realiza tu tramitación de alta censal y conexión a la Seguridad Social de manera digitalizada y guiada en pocos minutos.</p>
+            
+                <!-- El template tag {% url 'asistente_alta' %} llamará de forma dinámica y segura a nuestra nueva ruta -->
+                <a href="{% url 'asistente_alta' %}" class="btn btn-success btn-lg font-weight-bold px-4 shadow-sm text-uppercase">
+                    <i class="fas fa-rocket mr-2"></i> alta como autonomo
+                </a>
             </div>
             <div class="f-card" style="border-top-color: #9b59b6;">
                 <h3>💳 Tu Móvil es tu Datáfono</h3>

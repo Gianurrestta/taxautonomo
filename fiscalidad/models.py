@@ -2,6 +2,7 @@ import datetime
 import hashlib
 from decimal import Decimal
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
@@ -210,3 +211,71 @@ class GastoRecibido(models.Model):
     porcentaje_iva = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.21'))
     estado_pago = models.CharField(max_length=10, choices=ESTADOS_PAGO, default='PENDIENTE')
     fecha_pago_real = models.DateField(null=True, blank=True)
+
+# ==============================================================================
+# MÓDULO DE ALTA DE AUTÓNOMOS (SISTEMA SEGURO Y COMPLIANT)
+# ==============================================================================
+
+class SolicitudAlta(models.Model):
+    ESTADOS_TRAMITE = [
+        ('BORRADOR', 'En progreso / Borrador'),
+        ('PENDIENTE', 'Pendiente de revisión'),
+        ('PROCESANDO', 'Enviado a la Administración'),
+        ('COMPLETADO', 'Alta Confirmada'),
+        ('RECHAZADO', 'Error / Rechazado'),
+    ]
+
+    MUTUAS_CHOICES = [
+        ('001', 'Activa Mutua'),
+        ('002', 'Asepeyo'),
+        ('003', 'Fraternidad-Muprespa'),
+        ('004', 'Fremap'),
+        ('005', 'Gallega'),
+        ('006', 'Ibermutua'),
+        ('007', 'MAC'),
+        ('008', 'MC Mutual'),
+        ('009', 'Mutualia'),
+        ('010', 'Mutua Universal'),
+    ]
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='solicitud_alta'
+    )
+    paso_actual = models.IntegerField(default=1)
+    estado = models.CharField(max_length=20, choices=ESTADOS_TRAMITE, default='BORRADOR')
+    
+    # --- PASO 1: Identidad Segura (OCR del DNI/NIE) ---
+    dni_frontal = models.ImageField(upload_to='documentos_alta/frontal/%Y/%m/', null=True, blank=True)
+    dni_reverso = models.ImageField(upload_to='documentos_alta/reverso/%Y/%m/', null=True, blank=True)
+    nif_nie = models.CharField(max_length=15, blank=True)
+    nombre = models.CharField(max_length=100, blank=True)
+    apellidos = models.CharField(max_length=100, blank=True)
+    fecha_nacimiento = models.DateField(null=True, blank=True)
+    telefono = models.CharField(max_length=20, blank=True)
+    
+    # --- PASO 2: Domicilio Fiscal ---
+    direccion_fiscal = models.CharField(max_length=255, blank=True)
+    codigo_postal = models.CharField(max_length=10, blank=True)
+    localidad = models.CharField(max_length=100, blank=True)
+    provincia = models.CharField(max_length=100, blank=True)
+    
+    # --- PASO 3: Actividad Económica (IAE) ---
+    iae_codigo = models.CharField(max_length=10, blank=True)
+    cnae_codigo = models.CharField(max_length=10, null=True, blank=True)
+    descripcion_actividad = models.TextField(blank=True)
+    fecha_inicio = models.DateField(null=True, blank=True)
+    
+    # --- PASO 4: Seguridad Social ---
+    mutua = models.CharField(max_length=5, choices=MUTUAS_CHOICES, null=True, blank=True)
+    aplica_tarifa_plana = models.BooleanField(default=True)
+    
+    # --- PASO 5: Domiciliación Bancaria (Cuota RETA) ---
+    iban_cuenta = models.CharField(max_length=34, blank=True)
+    
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Solicitud Alta - {self.usuario.username} ({self.estado})"
