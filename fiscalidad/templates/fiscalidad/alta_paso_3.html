@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alta Express - Paso 3</title>
+    <link rel="stylesheet" href="https://bootstrapcdn.com">
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        body { background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5" style="max-width: 800px;">
+    <!-- Barra de Progreso Avanzada al 60% -->
+    <div class="progress mb-4" style="height: 25px; border-radius: 8px;">
+        <div class="progress-bar bg-success progress-bar-striped" role="progressbar" style="width: 60%; font-weight: bold; font-size: 14px;" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100">Paso 3 de 5</div>
+    </div>
+
+    <div class="card shadow-lg border-0 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h3 class="my-1" style="font-size: 24px; font-weight: 500;">Paso 3: Tu Actividad Económica</h3>
+        </div>
+        
+        <div class="card-body p-4 bg-white">
+            <!-- Cuadro explicativo amigable -->
+            <div class="alert alert-info shadow-sm" role="alert" style="border-left: 5px solid #2980b9; border-radius: 6px; background-color: #ebf5fb; color: #2c3e50;">
+                <h5 class="alert-heading font-weight-bold" style="color: #2980b9; font-size: 18px; margin-bottom: 8px;">💼 ¿A qué te vas a dedicar exactamente?</h5>
+                <p style="font-size: 14.5px; line-height: 1.5; margin-bottom: 0;">El Gobierno de España necesita saber qué tipo de trabajo vas a realizar. Para ello utiliza el **IAE**, una lista de categorías profesionales que determina qué impuestos debes pagar. Selecciona la categoría que mejor se adapte a tu profesión y descríbela brevemente. Nosotros nos encargaremos de calcular los códigos de cotización interna de forma totalmente automatizada.</p>
+            </div>
+
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+
+                <!-- Selección de Categoría / IAE amigable -->
+            <div class="form-group mb-4">
+                <label for="iae_codigo" class="font-weight-bold text-dark">📋 Sector Profesional o Comercial Principal *</label>
+                <select name="iae_codigo" id="iae_codigo" class="form-control form-control-lg" style="border-radius: 6px;" required>
+                    <option value="" disabled {% if not solicitud.iae_codigo %}selected{% endif %}>-- Selecciona tu sector oficial --</option>
+                    
+                    <optgroup label="Sección 1: Actividades Empresariales (Comercio, Servicios, Industria)">
+                        <option value="EMP_COM_D" {% if solicitud.iae_codigo == "EMP_COM_D" %}selected{% endif %}>Comercio al por menor / Tiendas y Comercio Online</option>
+                        <option value="EMP_HOS" {% if solicitud.iae_codigo == "EMP_HOS" %}selected{% endif %}>Hostelería: Bares, Cafeterías, Restaurantes y Hoteles</option>
+                        <option value="EMP_SER" {% if solicitud.iae_codigo == "EMP_SER" %}selected{% endif %}>Servicios Personales: Peluquerías, Estética, Limpieza, Seguridad</option>
+                        <option value="EMP_TRA" {% if solicitud.iae_codigo == "EMP_TRA" %}selected{% endif %}>Transportes, Mudanzas y Mensajería</option>
+                        <option value="EMP_CON" {% if solicitud.iae_codigo == "EMP_CON" %}selected{% endif %}>Construcción, Reformas y Pintura</option>
+                        <option value="EMP_FAB" {% if solicitud.iae_codigo == "EMP_FAB" %}selected{% endif %}>Industria Manufacturera: Textil, Calzado, Madera, Imprenta</option>
+                        <option value="EMP_FIN" {% if solicitud.iae_codigo == "EMP_FIN" %}selected{% endif %}>Servicios Inmobiliarios, Financieros y Seguros</option>
+                    </optgroup>
+
+                    <optgroup label="Sección 2: Actividades Profesionales (Freelances y Profesiones Liberales)">
+                        <option value="PROF_REC" {% if solicitud.iae_codigo == "PROF_REC" %}selected{% endif %}>Servicios Digitales: Programadores, Diseñadores, Periodistas, Marketing</option>
+                        <option value="PROF_EDU" {% if solicitud.iae_codigo == "PROF_EDU" %}selected{% endif %}>Educación: Profesores, Formadores, Traductores, Academias</option>
+                        <option value="PROF_ECO" {% if solicitud.iae_codigo == "PROF_ECO" %}selected{% endif %}>Asesoría: Economistas, Gestores Financieros, Consultores de Negocio</option>
+                        <option value="PROF_LEG" {% if solicitud.iae_codigo == "PROF_LEG" %}selected{% endif %}>Servicios Legales: Abogados, Procuradores, Notarios</option>
+                        <option value="PROF_SAN" {% if solicitud.iae_codigo == "PROF_SAN" %}selected{% endif %}>Sanidad y Bienestar: Médicos, Psicólogos, Fisioterapeutas, Veterinarios</option>
+                        <option value="PROF_TEC" {% if solicitud.iae_codigo == "PROF_TEC" %}selected{% endif %}>Técnicos: Arquitectos, Ingenieros, Delineantes</option>
+                    </optgroup>
+
+                    <optgroup label="Sección 3: Actividades Artísticas y Deportivas">
+                        <option value="ART_ESPECT" {% if solicitud.iae_codigo == "ART_ESPECT" %}selected{% endif %}>Artistas: Música, Teatro, Cine, Espectáculos, Escritores</option>
+                        <option value="ART_DEPOR" {% if solicitud.iae_codigo == "ART_DEPOR" %}selected{% endif %}>Deporte: Entrenadores Personales, Deportistas Profesionales, Árbitros</option>
+                    </optgroup>
+                </select>
+            </div>
+
+                <!-- Descripción de la actividad -->
+                <div class="form-group mb-4">
+                    <label for="descripcion_actividad" class="font-weight-bold text-dark">✍️ Describe brevemente qué servicios vas a ofrecer *</label>
+                    <textarea name="descripcion_actividad" id="descripcion_actividad" rows="3" class="form-control" style="border-radius: 6px;" placeholder="Ej: Desarrollo de aplicaciones móviles y páginas web para empresas locales..." required>{{ solicitud.descripcion_actividad }}</textarea>
+                </div>
+
+                <!-- Fecha de Inicio de la Actividad -->
+                <div class="form-group mb-4">
+                    <label for="fecha_inicio" class="font-weight-bold text-dark">📅 ¿Qué día tienes pensado empezar a facturar? *</label>
+                    <input type="date" name="fecha_inicio" id="fecha_inicio" class="form-control form-control-lg" value="{{ solicitud.fecha_inicio }}" required style="border-radius: 6px;">
+                    <small class="text-muted">Consejo fiscal: Hacienda te permite dar de alta la fecha de hoy o establecer un inicio programado para los próximos días.</small>
+                </div>
+
+                <!-- Botonera de Navegación del Paso 3 -->
+                <div class="d-flex justify-content-between align-items-center mt-5" style="border-top: 1px solid #eee; padding-top: 20px;">
+                    <button type="submit" name="accion" value="retroceder" class="btn btn-outline-secondary font-weight-bold">⬅️ Volver al Domicilio</button>
+                    <button type="submit" name="accion" value="avanzar" class="btn btn-success btn-lg px-5 font-weight-bold text-uppercase" style="font-size: 15px;">Guardar y Continuar ➡️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

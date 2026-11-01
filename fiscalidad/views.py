@@ -2,6 +2,8 @@ import datetime
 from decimal import Decimal
 import urllib.parse
 import random
+import string
+
 
 # Importaciones nativas de Django
 from django.shortcuts import render, redirect, get_object_or_404
@@ -371,13 +373,13 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from .models import SolicitudAlta
 
+# Reemplaza la función asistente_alta_autonomo por esta versión corregida en fiscalidad/views.py
+
 def asistente_alta_autonomo(request):
     """
     Asistente de alta express paso a paso.
-    Fase inicial: Captura de datos puramente manual para evitar fallos de lectura.
+    Estructura robusta ante peticiones GET y POST para evitar retornos None.
     """
-    request.session['alta_paso_actual'] = 1 
-    # Si el usuario ya está autenticado, usamos la base de datos; si no, la sesión temporal
     if request.user.is_authenticated:
         solicitud, created = SolicitudAlta.objects.get_or_create(
             usuario=request.user,
@@ -399,7 +401,7 @@ def asistente_alta_autonomo(request):
                 request.session['alta_paso_actual'] = paso - 1
             return redirect('asistente_alta')
             
-        # --- PROCESAMIENTO DEL PASO 1: DATOS PERSONALES (MANUAL) ---
+        # --- PROCESAMIENTO DEL PASO 1 ---
         if paso == 1:
             nif_nie = request.POST.get('nif_nie', '').strip().upper()
             nombre = request.POST.get('nombre', '').strip().upper()
@@ -407,12 +409,10 @@ def asistente_alta_autonomo(request):
             fecha_nacimiento = request.POST.get('fecha_nacimiento', '')
             telefono = request.POST.get('telefono', '').strip()
 
-            # Validación estricta en el servidor para evitar datos vacíos antes de enviar a Hacienda
             if not nif_nie or not nombre or not apellidos or not telefono:
                 messages.error(request, "Por favor, rellena todos los campos obligatorios (*).")
                 return redirect('asistente_alta')
 
-            # Guardamos los datos recogidos del formulario
             if not request.user.is_authenticated:
                 request.session['alta_nif_nie'] = nif_nie
                 request.session['alta_nombre'] = nombre
@@ -430,10 +430,10 @@ def asistente_alta_autonomo(request):
                 solicitud.paso_actual = 2
                 solicitud.save()
 
-            messages.success(request, "Datos personales guardados correctamente. ¡Continuamos!")
+            messages.success(request, "Datos personales guardados correctamente.")
             return redirect('asistente_alta')
 
-        # --- PROCESAMIENTO DEL PASO 2: DOMICILIO FISCAL ---
+        # --- PROCESAMIENTO DEL PASO 2 ---
         elif paso == 2:
             direccion = request.POST.get('direccion_fiscal', '').strip()
             cp = request.POST.get('codigo_postal', '').strip()
@@ -461,7 +461,144 @@ def asistente_alta_autonomo(request):
             messages.success(request, "Domicilio fiscal guardado correctamente.")
             return redirect('asistente_alta')
 
-    # Recomponemos los datos para mantener los campos rellenos si el usuario vuelve atrás
+        # --- PROCESAMIENTO DEL PASO 3 ---
+        elif paso == 3:
+            iae_codigo = request.POST.get('iae_codigo', '').strip()
+            descripcion_actividad = request.POST.get('descripcion_actividad', '').strip()
+            fecha_inicio = request.POST.get('fecha_inicio', '')
+
+            if not iae_codigo or not descripcion_actividad or not fecha_inicio:
+                messages.error(request, "Por favor, rellena todos los campos obligatorios sobre tu actividad.")
+                return redirect('asistente_alta')
+
+            cnae_calculado = deducir_cnae_desde_iae(iae_codigo)
+
+            if not request.user.is_authenticated:
+                request.session['alta_iae_codigo'] = iae_codigo
+                request.session['alta_cnae_codigo'] = cnae_calculado
+                request.session['alta_descripcion_actividad'] = descripcion_actividad
+                request.session['alta_fecha_inicio'] = fecha_inicio
+                request.session['alta_paso_actual'] = 4
+            else:
+                solicitud.iae_codigo = iae_codigo
+                solicitud.cnae_codigo = cnae_calculado
+                solicitud.descripcion_actividad = descripcion_actividad
+                solicitud.fecha_inicio = fecha_inicio
+                solicitud.paso_actual = 4
+                solicitud.save()
+
+            messages.success(request, "Actividad económica registrada con éxito.")
+            return redirect('asistente_alta')
+        
+        # --- PASO 4: SEGURIDAD SOCIAL Y COBERTURAS (AÑADIR ESTE BLOQUE) ---
+        elif paso == 4:
+            mutua = request.POST.get('mutua', '').strip()
+            aplica_tarifa_plana = 'aplica_tarifa_plana' in request.POST
+
+            if not mutua:
+                messages.error(request, "Por favor, debes seleccionar una Mutua Colaboradora para tus coberturas.")
+                return redirect('asistente_alta')
+
+            # Guardamos las decisiones de protección social en la sesión o base de datos
+            if not request.user.is_authenticated:
+                request.session['alta_mutua'] = mutua
+                request.session['alta_aplica_tarifa_plana'] = aplica_tarifa_plana
+                request.session['alta_paso_actual'] = 5
+            else:
+                solicitud.mutua = mutua
+                solicitud.aplica_tarifa_plana = aplica_tarifa_plana
+                solicitud.paso_actual = 5
+                solicitud.save()
+
+            messages.success(request, "Configuración de Seguridad Social guardada correctamente.")
+            return redirect('asistente_alta')
+
+               # --- PASO 5: DOMICILIACIÓN Y ALTA INSTANTÁNEA (VERSIÓN CORREGIDA) ---
+        elif paso == 5:
+            iban_cuenta = request.POST.get('iban_cuenta', '').replace(" ", "").upper()
+
+            if not iban_cuenta or len(iban_cuenta) < 20:
+                messages.error(request, "Por favor, introduce un número de cuenta IBAN válido para domiciliar tus cuotas.")
+                return redirect('asistente_alta')
+
+            # 1. Extraemos los datos temporales de la sesión ANTES de que login() la reinicie
+            username_alta = request.session.get('alta_nif_nie')
+            email_alta = f"{username_alta.lower()}@plataforma.com"
+            
+            import string
+            import random
+            caracteres = string.ascii_letters + string.digits
+            password_aleatoria = ''.join(random.choice(caracteres) for i in range(12))
+
+            # 2. Creamos el usuario en Django
+            username_alta = request.session.get('alta_nif_nie')
+            email_alta = f"{username_alta.lower()}@plataforma.com"
+            
+            nuevo_usuario, created_user = User.objects.get_or_create(
+                username=username_alta,
+                defaults={
+                    'email': email_alta,
+                }
+            )
+            
+            # Si el usuario es nuevo, le asignamos su contraseña aleatoria segura
+            if created_user:
+                import string
+                import random
+                caracteres = string.ascii_letters + string.digits
+                password_aleatoria = ''.join(random.choice(caracteres) for i in range(12))
+                nuevo_usuario.set_password(password_aleatoria)
+                nuevo_usuario.save()
+
+            # 3. Consolidamos o actualizamos el registro de SolicitudAlta en la Base de Datos
+            solicitud_oficial, created_solicitud = SolicitudAlta.objects.get_or_create(
+                usuario=nuevo_usuario,
+                defaults={
+                    'paso_actual': 5,
+                    'estado': 'COMPLETADO',
+                    'nif_nie': username_alta,
+                    'nombre': request.session.get('alta_nombre'),
+                    'apellidos': request.session.get('alta_apellidos'),
+                    'telefono': request.session.get('alta_telefono'),
+                    'direccion_fiscal': request.session.get('alta_direccion_fiscal'),
+                    'codigo_postal': request.session.get('alta_codigo_postal'),
+                    'localidad': request.session.get('alta_localidad'),
+                    'provincia': request.session.get('alta_provincia'),
+                    'iae_codigo': request.session.get('alta_iae_codigo'),
+                    'cnae_codigo': request.session.get('alta_cnae_codigo'),
+                    'descripcion_actividad': request.session.get('alta_descripcion_actividad'),
+                    'mutua': request.session.get('alta_mutua'),
+                    'aplica_tarifa_plana': request.session.get('alta_aplica_tarifa_plana', True),
+                    'iban_cuenta': iban_cuenta
+                }
+            )
+            
+            # Si la solicitud ya existía, simplemente actualizamos sus datos finales
+            if not created_solicitud:
+                solicitud_oficial.estado = 'COMPLETADO'
+                solicitud_oficial.iban_cuenta = iban_cuenta
+                solicitud_oficial.save()
+
+            # 4. Iniciar sesión de forma segura en el navegador
+            login(request, nuevo_usuario)
+
+            # 5. Limpiamos las variables temporales de la sesión
+            claves_sesion = ['alta_nif_nie', 'alta_nombre', 'alta_apellidos', 'alta_telefono', 
+                             'alta_direccion_fiscal', 'alta_codigo_postal', 'alta_localidad', 
+                             'alta_provincia', 'alta_iae_codigo', 'alta_cnae_codigo', 
+                             'alta_descripcion_actividad', 'alta_mutua', 'alta_aplica_tarifa_plana', 
+                             'alta_paso_actual', 'alta_iban_cuenta']
+            for clave in claves_sesion:
+                if clave in request.session:
+                    del request.session[clave]
+
+            messages.success(request, f"¡Enhorabuena, {solicitud_oficial.nombre}! Tu alta telemática ha sido procesada con éxito.")
+            
+            # Forzamos el renderizado directo de tu archivo independiente para evitar conflictos de rutas base
+            return render(request, 'fiscalidad/dashboard.html', {'solicitud': solicitud_oficial})
+
+
+    # --- FLUJO GET: RECOMPOSICIÓN DE CONTEXTO SEGURO Y LIMPIO ---
     if request.user.is_authenticated:
         datos_formulario = {
             'telefono': solicitud.telefono,
@@ -473,6 +610,12 @@ def asistente_alta_autonomo(request):
             'codigo_postal': solicitud.codigo_postal,
             'localidad': solicitud.localidad,
             'provincia': solicitud.provincia,
+            'iae_codigo': solicitud.iae_codigo,
+            'descripcion_actividad': solicitud.descripcion_actividad,
+            'fecha_inicio': str(solicitud.fecha_inicio) if solicitud.fecha_inicio else '',
+            'mutua': solicitud.mutua,
+            'aplica_tarifa_plana': solicitud.aplica_tarifa_plana,
+            'iban_cuenta': request.session.get('alta_iban_cuenta', ''),
         }
     else:
         datos_formulario = {
@@ -485,15 +628,20 @@ def asistente_alta_autonomo(request):
             'codigo_postal': request.session.get('alta_codigo_postal', ''),
             'localidad': request.session.get('alta_localidad', ''),
             'provincia': request.session.get('alta_provincia', ''),
+            'iae_codigo': request.session.get('alta_iae_codigo', ''),
+            'descripcion_actividad': request.session.get('alta_descripcion_actividad', ''),
+            'fecha_inicio': request.session.get('alta_fecha_inicio', ''),
+            'mutua': request.session.get('alta_mutua', ''),
+            'aplica_tarifa_plana': request.session.get('alta_aplica_tarifa_plana', True),
         }
 
     context = {
         'paso': paso,
         'solicitud': datos_formulario,
-        'mutuas': SolicitudAlta.MUTUAS_CHOICES if hasattr(SolicitudAlta, 'MUTUAS_CHOICES') else []
+        'mutuas': SolicitudAlta.MUTUAS_CHOICES
     }
+    # Obligatorio: Garantizamos que en cualquier petición GET se retorne una respuesta válida
     return render(request, f'fiscalidad/alta_paso_{paso}.html', context)
-
 
 def simular_extraccion_ocr_api(ruta_archivo):
     """
@@ -508,3 +656,45 @@ def simular_extraccion_ocr_api(ruta_archivo):
         "apellidos": "García Pérez",
         "fecha_nacimiento": "1990-05-15",
     }
+
+# Añade este bloque al final de fiscalidad/views.py
+
+def deducir_cnae_desde_iae(sector_codigo):
+    """
+    Asigna un código CNAE base de la Seguridad Social según el sector 
+    de actividad seleccionado por el usuario en el paso 3.
+    """
+    mapeo_universal = {
+        # Empresariales
+        'EMP_GAN': '0141',   # Ganadería
+        'EMP_IND': '2011',   # Industria química
+        'EMP_MET': '2511',   # Fabricación estructuras metálicas
+        'EMP_FAB': '1392',   # Fabricación textiles
+        'EMP_CON': '4120',   # Construcción de edificios
+        'EMP_COM_M': '4619',  # Intermediarios del comercio
+        'EMP_COM_D': '4711',  # Comercio al por menor / Tiendas
+        'EMP_HOS': '5610',   # Restaurantes y puestos de comida
+        'EMP_TRA': '4941',   # Transporte de mercancías por carretera
+        'EMP_TEL': '6110',   # Telecomunicaciones de cable
+        'EMP_FIN': '6419',   # Otra intermediación financiera
+        'EMP_SER': '9602',   # Peluquería y otros tratamientos de belleza
+        
+        # Profesionales
+        'PROF_AGR': '0161',  # Actividades de apoyo a la agricultura
+        'PROF_TEC': '7111',  # Servicios de arquitectura
+        'PROF_COM': '4611',  # Intermediarios comercio materias primas
+        'PROF_SAN': '8621',  # Actividades de medicina general
+        'PROF_LEG': '6910',  # Actividades jurídicas
+        'PROF_ECO': '6920',  # Actividades de contabilidad, teneduría y auditoría
+        'PROF_EDU': '8559',  # Otra educación n.c.o.p.
+        'PROF_REC': '6201',  # Actividades de programación informática / Diseño
+        
+        # Artísticas
+        'ART_ESPECT': '9001', # Artes escénicas
+        'ART_DEPOR': '9319',  # Otras actividades deportivas
+        'ART_TAUR': '9004',   # Gestión de salas de espectáculos
+    }
+    return mapeo_universal.get(sector_codigo, '9609')
+
+
+

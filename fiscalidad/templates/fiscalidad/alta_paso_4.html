@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alta Express - Paso 4</title>
+    <link rel="stylesheet" href="https://bootstrapcdn.com">
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        body { background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5" style="max-width: 800px;">
+    <!-- Barra de Progreso Avanzada al 80% -->
+    <div class="progress mb-4" style="height: 25px; border-radius: 8px;">
+        <div class="progress-bar bg-success progress-bar-striped" role="progressbar" style="width: 80%; font-weight: bold; font-size: 14px;" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100">Paso 4 de 5</div>
+    </div>
+
+    <div class="card shadow-lg border-0 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h3 class="my-1" style="font-size: 24px; font-weight: 500;">Paso 4: Coberturas de la Seguridad Social</h3>
+        </div>
+        
+        <div class="card-body p-4 bg-white">
+            <!-- Cuadro explicativo empático -->
+            <div class="alert alert-info shadow-sm" role="alert" style="border-left: 5px solid #2980b9; border-radius: 6px; background-color: #ebf5fb; color: #2c3e50;">
+                <h5 class="alert-heading font-weight-bold" style="color: #2980b9; font-size: 18px; margin-bottom: 8px;">🛡️ Tu protección médica y bonificaciones</h5>
+                <p style="font-size: 14.5px; line-height: 1.5; margin-bottom: 0;">Al darte de alta en la Seguridad Social (RETA), tienes derecho a la baja médica por enfermedad o accidente laboral. Para gestionarlo, debes elegir una **Mutua Colaboradora**. Por ley, todas ofrecen exactamente las mismas coberturas y no te costará nada extra. Además, validaremos si cumples los requisitos para beneficiarte de la **Tarifa Plana de Autónomos**.</p>
+            </div>
+
+            <!-- Alertas de Django -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} font-weight-bold" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+
+                <!-- Selección de Mutua Colaboradora -->
+                <div class="form-group mb-4">
+                    <label for="mutua" class="font-weight-bold text-dark">🏥 Elige tu Mutua Colaboradora *</label>
+                    <select name="mutua" id="mutua" class="form-control form-control-lg" style="border-radius: 6px;" required>
+                        <option value="" disabled {% if not solicitud.mutua %}selected{% endif %}>-- Selecciona una entidad médica --</option>
+                        {% for código, nombre in mutuas %}
+                            <option value="{{ código }}" {% if solicitud.mutua == código %}selected{% endif %}>{{ nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Recomendación local: En Valencia, entidades como Fremap, Asepeyo o Ibermutua cuentan con una amplia red de centros médicos propios.</small>
+                </div>
+
+                <!-- Sección Tarifa Plana / Bonificación -->
+                <div class="card p-3 mb-4" style="background-color: #f8f9f9; border-radius: 8px;">
+                    <div class="custom-control custom-checkbox custom-checkbox-lg">
+                        <input type="checkbox" name="aplica_tarifa_plana" class="custom-control-input" id="aplica_tarifa_plana" {% if solicitud.aplica_tarifa_plana %}checked{% endif %}>
+                        <label class="custom-control-label font-weight-bold text-dark h6 mb-2" for="aplica_tarifa_plana" style="cursor: pointer;">🎁 Solicitar reducción de cuota (Tarifa Plana de Autónomo)</label>
+                    </div>
+                    <p class="small text-muted mb-0" style="padding-left: 24px; line-height: 1.4;">Marca esta casilla si eres nuevo autónomo o no has estado de alta en los últimos 2 años. Esto solicitará de forma automática la cuota reducida de 80€/mes frente a la cuota ordinaria.</p>
+                </div>
+
+                <!-- Botonera de Navegación del Paso 4 -->
+                <div class="d-flex justify-content-between align-items-center mt-5" style="border-top: 1px solid #eee; padding-top: 20px;">
+                    <button type="submit" name="accion" value="retroceder" class="btn btn-outline-secondary font-weight-bold">⬅️ Volver a la Actividad</button>
+                    <button type="submit" name="accion" value="avanzar" class="btn btn-success btn-lg px-5 font-weight-bold text-uppercase" style="font-size: 15px;">Guardar y Continuar ➡️</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

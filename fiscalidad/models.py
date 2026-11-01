@@ -238,44 +238,41 @@ class SolicitudAlta(models.Model):
         ('010', 'Mutua Universal'),
     ]
 
-    usuario = models.OneToOneField(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE, 
-        related_name='solicitud_alta'
-    )
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='solicitud_alta')
     paso_actual = models.IntegerField(default=1)
     estado = models.CharField(max_length=20, choices=ESTADOS_TRAMITE, default='BORRADOR')
     
-    # --- PASO 1: Identidad Segura (OCR del DNI/NIE) ---
-    dni_frontal = models.ImageField(upload_to='documentos_alta/frontal/%Y/%m/', null=True, blank=True)
-    dni_reverso = models.ImageField(upload_to='documentos_alta/reverso/%Y/%m/', null=True, blank=True)
-    nif_nie = models.CharField(max_length=15, blank=True)
+    # Paso 1: Datos Personales
+    nif_nie = models.CharField(max_length=15, verbose_name="NIF o NIE", blank=True)
     nombre = models.CharField(max_length=100, blank=True)
     apellidos = models.CharField(max_length=100, blank=True)
     fecha_nacimiento = models.DateField(null=True, blank=True)
     telefono = models.CharField(max_length=20, blank=True)
     
-    # --- PASO 2: Domicilio Fiscal ---
+    # Paso 2: Domicilio Fiscal
     direccion_fiscal = models.CharField(max_length=255, blank=True)
     codigo_postal = models.CharField(max_length=10, blank=True)
     localidad = models.CharField(max_length=100, blank=True)
     provincia = models.CharField(max_length=100, blank=True)
     
-    # --- PASO 3: Actividad Económica (IAE) ---
-    iae_codigo = models.CharField(max_length=10, blank=True)
-    cnae_codigo = models.CharField(max_length=10, null=True, blank=True)
-    descripcion_actividad = models.TextField(blank=True)
-    fecha_inicio = models.DateField(null=True, blank=True)
+    # Paso 3: Actividad Económica Universal
+    iae_codigo = models.CharField(max_length=20, verbose_name="Código de Sector", blank=True)
+    cnae_codigo = models.CharField(max_length=10, verbose_name="Código CNAE", null=True, blank=True)
+    descripcion_actividad = models.TextField(verbose_name="Descripción de la actividad", blank=True)
+    fecha_inicio = models.DateField(null=True, blank=True, verbose_name="Fecha de inicio")
     
-    # --- PASO 4: Seguridad Social ---
+    # Paso 4: Seguridad Social
     mutua = models.CharField(max_length=5, choices=MUTUAS_CHOICES, null=True, blank=True)
-    aplica_tarifa_plana = models.BooleanField(default=True)
+    aplica_tarifa_plana = models.BooleanField(default=True, verbose_name="Aplica Tarifa Plana")
     
-    # --- PASO 5: Domiciliación Bancaria (Cuota RETA) ---
-    iban_cuenta = models.CharField(max_length=34, blank=True)
+    # Paso 5: Datos de Cobro
+    iban_cuenta = models.CharField(max_length=34, verbose_name="Cuenta Bancaria (IBAN)", blank=True)
     
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Solicitud Alta - {self.usuario.username} ({self.estado})"
+
+
+    
