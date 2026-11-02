@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurar Logo de Empresa</title>
+    <link rel="stylesheet" href="https://bootstrapcdn.com">
+    <link rel="stylesheet" href="https://cloudflare.com">
+    <style>
+        body { background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5" style="max-width: 650px;">
+    <div class="card shadow-lg border-0 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h3 class="my-1" style="font-size: 22px; font-weight: 500;">🎨 Identidad Corporativa: Tu Logo</h3>
+        </div>
+        
+        <div class="card-body p-4 bg-white">
+            <div class="alert alert-info shadow-sm" role="alert" style="border-left: 5px solid #2980b9; background-color: #ebf5fb; color: #2c3e50;">
+                <p class="small mb-0">Sube el logotipo de tu negocio. Una vez guardado en tu cuenta, **se incrustará de forma automática en cada factura y cotización oficial** que generes desde cualquier dispositivo (móvil, tablet u ordenador), garantizando una imagen profesional ante tus clientes.</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} font-weight-bold" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulario con enctype obligatorio para archivos -->
+            <form method="POST" enctype="multipart/form-data" class="mt-4">
+                {% csrf_token %}
+
+                <!-- Mostrar logo actual si ya existe en la base de datos -->
+                <div class="text-center mb-4">
+                    <label class="font-weight-bold d-block text-secondary small mb-3">LOGO ACTUAL EN TU CUENTA</label>
+                    {% if perfil.logo %}
+                        <div class="p-3 border rounded bg-light d-inline-block">
+                            <img src="{{ perfil.logo.url }}" alt="Logo de la empresa" style="max-height: 100px; max-width: 250px;">
+                        </div>
+                    {% else %}
+                        <div class="p-3 border rounded bg-light text-muted small d-inline-block">
+                            <i class="fas fa-image fa-2x d-block mb-2"></i> No has subido ningún logo todavía
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Zona de carga de nuevo archivo -->
+                <div class="border p-4 rounded text-center mb-4" style="background-color: #f8f9f9; border: 2px dashed #bdc3c7 !important; border-radius: 8px;">
+                    <label for="logo_empresa" class="font-weight-bold d-block mb-3 text-dark">Subir nuevo logotipo</label>
+                    <input type="file" name="logo_empresa" id="logo_empresa" class="d-none" accept="image/*" onchange="previewImage(this)" required>
+                    <button type="button" class="btn btn-primary px-4 font-weight-bold shadow-sm" onclick="document.getElementById('logo_empresa').click();">Seleccionar Archivo</button>
+                    <div class="mt-3">
+                        <img id="preview_logo" src="#" alt="Vista previa del nuevo logo" class="img-fluid rounded d-none shadow-sm" style="max-height: 100px; border: 1px solid #ddd;">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-5" style="border-top: 1px solid #eee; padding-top: 20px;">
+                    <a href="{% url 'dashboard_fiscal' %}" class="btn btn-link text-muted p-0" style="text-decoration: none;">❌ Volver al Panel</a>
+                    <button type="submit" class="btn btn-success btn-lg px-4 shadow-sm font-weight-bold text-uppercase" style="font-size: 14px; border-radius: 6px;">Guardar Logo en la Nube 💾</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function previewImage(input) {
+    const preview = document.getElementById('preview_logo');
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.classList.remove('d-none');
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+</script>
+</body>
+</html>

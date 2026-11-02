@@ -696,5 +696,26 @@ def deducir_cnae_desde_iae(sector_codigo):
     }
     return mapeo_universal.get(sector_codigo, '9609')
 
+@login_required
+def configurar_perfil_logo(request):
+    """
+    Vista segura para que el autónomo suba el logo de su empresa.
+    El logo queda almacenado permanentemente en el servidor y en la base de datos.
+    """
+    # CORREGIDO: Cambiamos 'usuario' por 'user' tal como exige tu modelo original
+    perfil = get_object_or_404(PerfilAutonomo, user=request.user)
+
+    if request.method == 'POST':
+        logo_subido = request.FILES.get('logo_empresa')
+
+        if logo_subido:
+            perfil.logo = logo_subido
+            perfil.save() # Django almacena físicamente el archivo en media/logos_autonomos/
+            messages.success(request, "¡Logo de empresa guardado y sincronizado correctamente en tu perfil!")
+            return redirect('dashboard_fiscal') # Asegúrate de que 'dashboard_fiscal' es el name correcto de tu vista
+        else:
+            messages.error(request, "Por favor, selecciona un archivo de imagen válido.")
+
+    return render(request, 'fiscalidad/configurar_logo.html', {'perfil': perfil})
 
 

@@ -17,6 +17,17 @@
     </style>
 </head>
 <body>
+    <!-- En tu plantilla de factura.html o cotizacion.html (Incrustación automática) -->
+    <div class="invoice-header">
+        {% if factura.usuario.perfil_autonomo.logo %}
+            <!-- Si el autónomo tiene el logo guardado en la base de datos, lo pinta automáticamente -->
+            <img src="{{ factura.usuario.perfil_autonomo.logo.path }}" alt="Logo Corporativo" style="max-height: 80px;">
+        {% else %}
+            <!-- Si no tiene logo en su cuenta, se muestra su nombre comercial en texto como respaldo -->
+            <h2>{{ factura.usuario.perfil_autonomo.nombre_comercial }}</h2>
+        {% endif %}
+    </div>
+
     <div class="form-container">
         <h2>➕ Emitir Factura Oficial</h2>
         
