@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -9,9 +10,9 @@
         body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: var(--text); background: var(--bg); line-height: 1.6; }
         
         /* Navbar */
-        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .logo { font-size: 22px; font-weight: bold; color: var(--primary); }
-        .logo span { color: var(--accent); }
+        .navbar {display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
+        .logo {display: flex; align-items: center;}
+        .logo img {height: 65px; width: auto; display: block;}
         .nav-links .btn-login { text-decoration: none; color: var(--primary); font-weight: bold; margin-right: 20px; }
         .btn { display: inline-block; background: var(--accent); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; transition: background 0.2s; }
         .btn:hover { background: #27ae60; }
@@ -45,7 +46,9 @@
 
     <!-- Menú Superior -->
     <nav class="navbar">
-        <div class="logo">Plataforma<span>Autónomos</span></div>
+        <div class="logo">
+            <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
+        </div>
         <div class="nav-links">
             <a href="{% url 'login_usuario' %}" class="btn-login">🔑 Acceso Clientes</a>
             <a href="{% url 'registro_autonomo' %}" class="btn">Empezar Gratis</a>
@@ -53,7 +56,7 @@
     </nav>
 
     <!-- Sección Principal (Hero) -->
-    header class="hero">
+
         <div class="hero-text">
             <h1>Lleva todo tu negocio en el bolsillo de forma legal.</h1>
             <p>La primera solución integral en España que combina facturación oficial inalterable, tramitación de alta express y cobros integrados sin necesidad de datáfonos físicos.</p>
