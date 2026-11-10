@@ -6,24 +6,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Plataforma Todo-en-Uno para Autónomos | VERI*FACTU</title>
     <style>
-        :root { --primary: #2c3e50; --accent: #2ecc71; --text: #333; --bg: #f8fafc; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: var(--text); background: var(--bg); line-height: 1.6; }
+        :root { --primary: #2c3e50; --accent: #2ecc71; --text: #333; --bg: #dde3e9; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: var(--text); background: var(--bg); line-height: 1.8; }
         
         /* Navbar */
-        .navbar {display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
+        .navbar {display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
         .logo {display: flex; align-items: center;}
-        .logo img {height: 65px; width: auto; display: block;}
+        .logo img {height: 65px; width: auto; display: block; justify-content: center;}
         .nav-links .btn-login { text-decoration: none; color: var(--primary); font-weight: bold; margin-right: 20px; }
         .btn { display: inline-block; background: var(--accent); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; transition: background 0.2s; }
         .btn:hover { background: #27ae60; }
 
         /* Hero Section */
-        .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 1200px; margin: 60px auto; padding: 0 4px; align-items: center; }
-        .hero-text h1 { font-size: 48px; color: var(--primary); line-height: 1.2; margin-bottom: 20px; }
+        .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; max-width: 1200px; margin: 40px auto; padding: 0 4px; align-items: center; }
+        .hero-text h1 {display: flex; align-items: center; font-size: 48px; color: var(--primary); line-height: 1.2; margin-bottom: 20px; margin-top: 10px; padding: 10px 70px;}
         .hero-text p { font-size: 18px; color: #64748b; margin-bottom: 30px; }
         
         /* Formulario de Captación */
-        .cta-form { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .present {display: flex; justify-content: space-between; align-items: center; padding: 15px 40px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);}
+        .present img {height: 550px; width: auto; display: block;}
         .cta-form h3 { margin-top: 0; color: var(--primary); font-size: 22px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
@@ -39,7 +40,7 @@
         .f-card p { color: #64748b; font-size: 15px; }
 
         /* Footer */
-        footer { text-align: center; padding: 40px; background: var(--primary); color: white; margin-top: 8px; font-size: 14px; }
+        footer { text-align: center; padding: 20px; background: var(--primary); color: white; margin-top: 8px; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -58,15 +59,22 @@
     <!-- Sección Principal (Hero) -->
 
         <div class="hero-text">
-            <h1>Lleva todo tu negocio en el bolsillo de forma legal.</h1>
-            <p>La primera solución integral en España que combina facturación oficial inalterable, tramitación de alta express y cobros integrados sin necesidad de datáfonos físicos.</p>
+            <h1 style:"padding: 5px;">Los Autonomos llevan su negocio en el bolsillo de forma legal.</h1>
         </div>
         
-        <!-- Formulario de Validación de Clientes -->
-        <div class="cta-form">
-            <h3>🚀 Reserva tu plaza de Validación</h3>
-            <p style="font-size:13px; color:#64748b; margin-top:-10px;">Únete a las pruebas de las próximas semanas y digitaliza tu actividad.</p>
-            <form method="POST" action="{% url 'registro_autonomo' %}">
+        <!-- Presentacion del servicio -->
+        <div class="present">
+            <div>
+                <h3 style:"padding: 5px 30px;">🚀 Autonotax: Tu facturación e impuestos de autónomo, bajo control y 100 % legales con Hacienda </h3>
+                <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Gestiona toda la administración de tu actividad profesional desde un único lugar, con la máxima seguridad jurídica y sin complicaciones técnicas. Autonotax es la plataforma integral diseñada específicamente para los trabajadores autónomos en España que buscan ahorrar tiempo, proyectar una imagen profesional y evitar cualquier riesgo frente a la Agencia Tributaria.</p>
+                <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Con nuestro sistema en la nube, puedes elaborar presupuestos profesionales en segundos y convertirlos con un solo clic en facturas verificadas. Cumplimos de forma estricta con la Ley Antifraude, la normativa de la AEAT y todos los requisitos técnicos del sistema VERIFACTU, incorporando automáticamente la huella digital encadenada y el código QR oficial en cada documento.</p>
+                <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Además, a medida que registras tus ingresos y digitalizas tus gastos, Autonotax calcula en tiempo real tus obligaciones fiscales. Obtén de manera automática y sin errores los resultados exactos para presentar tus modelos trimestrales y anuales ante Hacienda (IVA, IRPF, retenciones y operaciones intracomunitarias).</p>
+                <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Dedica tu tiempo a hacer crecer tu negocio con la tranquilidad de saber que tu contabilidad está blindada ante la ley.</p>
+            </div>
+            <div class="imgpres01">
+                <img src="{% static 'images/index01.png' %}" alt="Persona feliz de ver cosas bien hechas">
+            </div>
+                <!--<form method="POST" action="{% url 'registro_autonomo' %}">
                 {% csrf_token %}
                 <div class="form-group">
                     <label>¿Qué necesitas primero?</label>
@@ -86,6 +94,7 @@
                 </div>
                 <button type="submit" class="btn btn-full">Solicitar Acceso y Registro</button>
             </form>
+        -->
         </div>
     </header>
 
@@ -115,6 +124,7 @@
 
     <footer>
         <p>&copy; 2026 Plataforma de Autónomos Homologada. Cumplimiento regulatorio estricto AEAT.</p>
+        <p style: "margin-top: 0px;">Plataforma creada por <b>GIAN CARLO URRESTTA</b></p>
     </footer>
 
 </body>
