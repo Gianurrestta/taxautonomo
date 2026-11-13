@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,6 +7,8 @@
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         .reg-container { max-width: 500px; width: 100%; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); box-sizing: border-box; overflow-y: auto; max-height: 90vh; }
+        .logo {display: flex; justify-content: center; align-items: center; margin-bottom: 20px;}
+        .logo img {height: 55px; width: auto; display: block;}
         h2 { color: #2c3e50; margin-top: 0; text-align: center; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: #34495e; font-size: 14px; }
@@ -19,6 +22,9 @@
 </head>
 <body>
     <div class="reg-container">
+        <div class="logo">
+            <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
+        </div>
         <h2>📝 Registro de Usuario</h2>
         
         {% if error %}

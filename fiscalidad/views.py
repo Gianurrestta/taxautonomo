@@ -3,6 +3,7 @@ from decimal import Decimal
 import urllib.parse
 import random
 import string
+import os
 
 
 # Importaciones nativas de Django
@@ -14,7 +15,7 @@ from django.contrib.auth.models import User
 
 # Importaciones para la generación de PDFs y Gráficos Nativos (ReportLab)
 from reportlab.lib.pagesizes import letter
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 # Módulo crítico para dibujar el código QR oficial de VERI*FACTU
@@ -22,7 +23,7 @@ from reportlab.graphics.barcode.qr import QrCode
 from reportlab.graphics.shapes import Drawing
 
 # Importaciones de tu propia aplicación relacional CRM
-from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, Cliente
+from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, LineaCotizacion, Cliente
 
 def landing_page(request):
     """Muestra la Landing Page de presentación comercial de la plataforma"""
@@ -67,31 +68,23 @@ def emitir_factura(request):
     mis_clientes = Cliente.objects.filter(autonomo=perfil).order_by('nombre_o_razon_social')
 
     if request.method == 'POST':
-        cliente_id = request.POST.get('cliente_id')
-        concepto = request.POST.get('concepto', 'Servicios profesionales')
-        base = request.POST.get('base_imponible', '0.00')
-        iva = request.POST.get('porcentaje_iva', '0.21')
-        fecha_op = request.POST.get('fecha_operacion')
-        
-        cliente_instancia = get_object_or_404(Cliente, id=cliente_id, autonomo=perfil)
-        numero_definitivo = perfil.obtener_siguiente_numero_factura()
-        
-        nueva_factura = FacturaEmitida.objects.create(
-            autonomo=perfil,
-            cliente=cliente_instancia,
-            numero_factura=numero_definitivo,
-            concepto=concepto,
-            base_imponible=Decimal(base),
-            porcentaje_iva=Decimal(iva),
-            fecha_operacion=datetime.datetime.strptime(fecha_op, '%Y-%m-%d').date() if fecha_op else datetime.date.today()
-        )
-        return redirect('descargar_factura_pdf', factura_id=nueva_factura.id)
+        modo_cliente = request.POST.get('modo_cliente', 'existente')
+        titulo = request.POST.get('titulo_proyecto', 'Presupuesto de Servicios')
 
-    context = {
-        'siguiente_numero': numero_provisional,
-        'mis_clientes': mis_clientes
-    }
-    return render(request, 'fiscalidad/emitir_factura.html', context)
+        if modo_cliente == 'nuevo':
+            # Guardamos el nuevo cliente en la base de datos CRM para futuras ocasiones
+            cliente_instancia = Cliente.objects.create(
+                autonomo=perfil,
+                nombre_o_razon_social=request.POST.get('nuevo_nombre', '').strip(),
+                nif_nie=request.POST.get('nuevo_nif', '').strip().upper(),
+                telefono=request.POST.get('nuevo_telefono', '').strip(),
+                email=request.POST.get('nuevo_email', '').strip(),
+                domicilio_fiscal=request.POST.get('nuevo_domicilio', '').strip()
+            )
+        else:
+            cliente_id = request.POST.get('cliente_id')
+            cliente_instancia = get_object_or_404(Cliente, id=cliente_id, autonomo=perfil)
+
 
 
 @login_required
@@ -217,53 +210,143 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     story = []
     styles = getSampleStyleSheet()
     
-    titulo_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, textColor=colors.HexColor('#2c3e50'), spaceAfter=20)
-    normal_style = styles['Normal']
-    bold_style = ParagraphStyle('Bold', parent=normal_style, fontName='Helvetica-Bold')
+    # Estilos tipográficos modernos (equivalentes al CSS)
+    titulo_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=20, textColor=colors.HexColor('#1e293b'), spaceAfter=4)
+    subtitulo_style = ParagraphStyle('SubTitle', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#64748b'), spaceAfter=20)
+    normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=colors.HexColor('#334155'))
+    bold_style = ParagraphStyle('Bold', parent=normal_style, fontName='Helvetica-Bold', textColor=colors.HexColor('#0f172a'))
+    header_table_style = ParagraphStyle('HeaderTable', parent=normal_style, fontName='Helvetica-Bold', textColor=colors.white)
 
-    story.append(Paragraph(f"PRESUPUESTO COMERCIAL: {cotizacion.titulo_proyecto}", titulo_style))
-    story.append(Spacer(1, 15))
+    # 1. Preparar el logotipo o el nombre del autónomo con el mismo tamaño del título
+    if autonomo.logo and os.path.exists(autonomo.logo.path):
+        elemento_logo = Image(autonomo.logo.path, width=110, height=55, kind='proportional')
+    else:
+        # Usamos directamente titulo_style para que tenga exactamente el mismo tamaño (20pt) y color
+        nombre_cabecera_style = ParagraphStyle('NombreCabecera', parent=titulo_style, alignment=0, spaceAfter=0)
+        elemento_logo = Paragraph(f"{autonomo.nombre_fiscal.upper()}", nombre_cabecera_style)
 
+
+    # 2. Preparar el título y datos del presupuesto alineados a la derecha (columna derecha)
+    titulo_derecha_style = ParagraphStyle('TituloDerecha', parent=titulo_style, alignment=2, spaceAfter=2)
+    subtitulo_derecha_style = ParagraphStyle('SubtituloDerecha', parent=subtitulo_style, alignment=2, spaceAfter=0)
+
+    bloque_titulo = [
+        Paragraph(f"PRESUPUESTO #{cotizacion.id:04d}", titulo_derecha_style),
+        Paragraph(f"Proyecto: <strong>{cotizacion.titulo_proyecto}</strong>", subtitulo_derecha_style),
+        Paragraph(f"Fecha: {cotizacion.fecha_creacion.strftime('%d/%m/%Y')}", subtitulo_derecha_style),
+    ]
+
+    # 3. Unir ambos elementos en una tabla de cabecera de 2 columnas (ancho total = 532pt)
+    
+    tabla_cabecera = Table([[elemento_logo, bloque_titulo]], colWidths=(200, 332))
+    tabla_cabecera.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (0, 0), 'LEFT'),
+        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+    ]))
+    story.append(tabla_cabecera)
+
+    # Bloque de Emisor y Cliente en tarjeta con fondo suave
     datos_contacto = [
-        [Paragraph("<strong>EMISOR:</strong>", normal_style), Paragraph("<strong>CLIENTE (Consumidor Final):</strong>", normal_style)],
+        [Paragraph("<strong>DATOS DEL EMISOR</strong>", bold_style), Paragraph("<strong>PREPARADO PARA (CLIENTE)</strong>", bold_style)],
         [Paragraph(f"{autonomo.nombre_fiscal}", normal_style), Paragraph(f"{cotizacion.cliente_nombre}", normal_style)],
         [Paragraph(f"NIF/NIE: {autonomo.nif_nie}", normal_style), Paragraph(f"NIF/NIE: {cotizacion.cliente_nif}", normal_style)],
-        [Paragraph(f"Actividad: {autonomo.actividad_profesional or 'Servicios'}", normal_style), Paragraph(f"Teléfono: {cotizacion.cliente_telefono}", normal_style)],
-        [Paragraph("", normal_style), Paragraph(f"Email: {cotizacion.cliente_email}", normal_style)],
+        [Paragraph(f"Actividad: {autonomo.actividad_profesional or 'Servicios Profesionales'}", normal_style), Paragraph(f"Tel: {cotizacion.cliente_telefono or 'No indicado'}", normal_style)],
+        [Paragraph(f"Domicilio: {autonomo.domicilio_fiscal or ''}", normal_style), Paragraph(f"Email: {cotizacion.cliente_email or 'No indicado'}", normal_style)],
     ]
     
-    t_contacto = Table(datos_contacto, colWidths=[260, 260])
-    t_contacto.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('BOTTOMPADDING', (0,0), (-1,-1), 4)]))
+    t_contacto = Table(datos_contacto, colWidths=(266, 266))
+    t_contacto.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#cbd5e1')),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, -1), (-1, -1), 10),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+    ]))
     story.append(t_contacto)
     story.append(Spacer(1, 25))
 
-    headers = [[Paragraph("<strong>Descripción Elemento</strong>", bold_style), Paragraph("<strong>Cant.</strong>", bold_style), Paragraph("<strong>Precio Unitario</strong>", bold_style), Paragraph("<strong>Total</strong>", bold_style)]]
+    # Tabla desglosada de conceptos
+    headers = [[
+        Paragraph("Descripción del Servicio / Concepto", header_table_style),
+        Paragraph("Cant.", header_table_style),
+        Paragraph("Precio Unit.", header_table_style),
+        Paragraph("Subtotal", header_table_style)
+    ]]
     
     lineas_tabla = []
     for linea in cotizacion.lineas.all():
         lineas_tabla.append([
             Paragraph(linea.descripcion_elemento, normal_style),
-            str(linea.width),
-            Paragraph(f"{linea.precio_unitario} €", normal_style),
-            Paragraph(f"{linea.coste_total} €", normal_style)
+            f"{linea.width:g}",
+            f"{linea.precio_unitario:.2f} €",
+            f"{linea.coste_total:.2f} €"
         ])
 
-    t_desglosada = Table(headers + lineas_tabla, colWidths=[240, 60, 100, 120])
+    t_desglosada = Table(headers + lineas_tabla, colWidths=(282, 60, 95, 95))
     t_desglosada.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#2c3e50')),
-        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
-        ('PADDING', (0,0), (-1,-1), 6),
-        ('ALIGN', (1,0), (-1,-1), 'RIGHT')
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e293b')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f8fafc')]),
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
     ]))
     story.append(t_desglosada)
-    story.append(Spacer(1, 15))
-    
-    story.append(Paragraph(f"<strong>TOTAL PRESUPUESTO ESTIMADO: {cotizacion.total_base_imponible} €</strong> (Impuestos no incluidos)", normal_style))
+    story.append(Spacer(1, 20))
+
+    # Recuadro destacado para el Total
+    # Cálculo matemático exacto del IVA (21%) y Total Final
+    base_imponible = cotizacion.total_base_imponible
+    porcentaje_iva = Decimal('0.21')
+    cuota_iva = (base_imponible * porcentaje_iva).quantize(Decimal('0.01'))
+    total_con_iva = base_imponible + cuota_iva
+
+    # Estilos alineados a la derecha para los importes
+    num_normal_style = ParagraphStyle('NumNormal', parent=normal_style, alignment=2)
+    num_total_style = ParagraphStyle('NumTotal', parent=bold_style, fontSize=12, alignment=2, textColor=colors.HexColor('#065f46'))
+
+    # Tabla desglosada de Base Imponible + IVA + Total a Pagar
+    datos_total = [
+        [
+            Paragraph("Base Imponible:", normal_style),
+            Paragraph(f"{base_imponible:.2f} €", num_normal_style)
+        ],
+        [
+            Paragraph("IVA (21%):", normal_style),
+            Paragraph(f"{cuota_iva:.2f} €", num_normal_style)
+        ],
+        [
+            Paragraph("<strong>TOTAL PRESUPUESTO (IVA Incluido):</strong>", ParagraphStyle('LabelTotal', parent=bold_style, fontSize=11, textColor=colors.HexColor('#065f46'))),
+            Paragraph(f"<strong>{total_con_iva:.2f} €</strong>", num_total_style)
+        ]
+    ]
+
+    t_total = Table(datos_total, colWidths=(380, 152))
+    t_total.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 1), colors.HexColor('#f8fafc')),
+        ('BACKGROUND', (0, 2), (-1, 2), colors.HexColor('#ecfdf5')),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#10b981')),
+        ('LINEABOVE', (0, 2), (-1, 2), 1, colors.HexColor('#10b981')),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 12),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+    ]))
+    story.append(t_total)
+    story.append(Spacer(1, 8))
+    story.append(Paragraph("<font size='8' color='#64748b'>* Precios expresados en Euros (€). Validez de la oferta: 15 días naturales.</font>", normal_style))
     
     doc.build(story)
     return response
-
 
 def login_usuario(request):
     if request.user.is_authenticated:
@@ -717,5 +800,67 @@ def configurar_perfil_logo(request):
             messages.error(request, "Por favor, selecciona un archivo de imagen válido.")
 
     return render(request, 'fiscalidad/configurar_logo.html', {'perfil': perfil})
+
+@login_required
+def crear_cotizacion(request):
+    """Permite crear un presupuesto detallado con cliente existente o nuevo"""
+    perfil = get_object_or_404(PerfilAutonomo, user=request.user)
+    mis_clientes = Cliente.objects.filter(autonomo=perfil).order_by('nombre_o_razon_social')
+
+    if request.method == 'POST':
+        modo_cliente = request.POST.get('modo_cliente', 'existente')
+        nuevo_nombre = request.POST.get('nuevo_nombre', '').strip()
+        cliente_id = request.POST.get('cliente_id', '').strip()
+        titulo = request.POST.get('titulo_proyecto', 'Presupuesto de Servicios')
+
+        # 1. Determinar o crear el cliente de forma segura
+        if modo_cliente == 'nuevo' or nuevo_nombre:
+            cliente_instancia = Cliente.objects.create(
+                autonomo=perfil,
+                nombre_o_razon_social=nuevo_nombre,
+                nif_nie=request.POST.get('nuevo_nif', '').strip().upper(),
+                telefono=request.POST.get('nuevo_telefono', '').strip(),
+                email=request.POST.get('nuevo_email', '').strip(),
+                domicilio_fiscal=request.POST.get('nuevo_domicilio', '').strip()
+            )
+        elif cliente_id.isdigit():
+            # Solo buscamos en la base de datos si cliente_id es realmente un número
+            cliente_instancia = get_object_or_404(Cliente, id=int(cliente_id), autonomo=perfil)
+        else:
+            # Si no eligió cliente ni llenó uno nuevo, regresamos con aviso claro
+            return render(request, 'fiscalidad/crear_cotizacion.html', {
+                'mis_clientes': mis_clientes,
+                'error': 'Debes seleccionar un cliente de la lista o rellenar los datos del cliente nuevo.'
+            })
+
+        # 2. Crear la cabecera del presupuesto (sin pasar total_base_imponible)
+        nueva_cotizacion = Cotizacion.objects.create(
+            autonomo=perfil,
+            cliente=cliente_instancia,
+            titulo_proyecto=titulo,
+            cliente_nombre=cliente_instancia.nombre_o_razon_social,
+            cliente_nif=cliente_instancia.nif_nie,
+            cliente_telefono=getattr(cliente_instancia, 'telefono', ''),
+            cliente_email=getattr(cliente_instancia, 'email', '')
+        )
+
+                # 3. Procesar las líneas del presupuesto
+        descripciones = request.POST.getlist('descripcion[]')
+        cantidades = request.POST.getlist('cantidad[]')
+        precios = request.POST.getlist('precio[]')
+
+        for desc, cant, prec in zip(descripciones, cantidades, precios):
+            if desc.strip() and cant and prec:
+                LineaCotizacion.objects.create(
+                    cotizacion=nueva_cotizacion,
+                    descripcion_elemento=desc.strip(),
+                    width=Decimal(cant),
+                    precio_unitario=Decimal(prec)
+                )
+
+        return redirect('dashboard_fiscal')
+
+
+    return render(request, 'fiscalidad/crear_cotizacion.html', {'mis_clientes': mis_clientes})
 
 

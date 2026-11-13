@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Nuevo Presupuesto Detallado</title>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6f9; padding: 40px; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h2 { color: #2c3e50; margin-top: 0; border-bottom: 2px solid #2ecc71; padding-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #34495e; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .linea-item { display: grid; grid-template-columns: 3fr 1fr 1fr auto; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .btn { padding: 10px 18px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-add { background: #3498db; color: white; margin-bottom: 20px; }
+        .btn-save { background: #2ecc71; color: white; font-size: 16px; width: 100%; }
+        .btn-del { background: #e74c3c; color: white; padding: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>📝 Crear Presupuesto Detallado</h2>
+        <form method="POST">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Seleccionar Cliente:</label>
+                <select name="cliente_id">
+                    <option value="">-- Elige un cliente de tu CRM --</option>
+                    {% for cliente in mis_clientes %}
+                        <option value="{{ cliente.id }}">{{ cliente.nombre_o_razon_social }} ({{ cliente.nif_nie }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group" style="background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <label style="margin: 0;">Cliente para este Presupuesto:</label>
+                    <button type="button" id="btn-toggle-cliente" onclick="alternarModoCliente()" style="background: #2c3e50; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+                        Crear Nuevo Cliente
+                    </button>
+                </div>
+
+                <!-- Campo oculto que indica al backend qué modo eligió el usuario -->
+                <input type="hidden" name="modo_cliente" id="modo_cliente" value="existente">
+
+                <!-- MODO 1: Seleccionar de la lista CRM -->
+                <div id="bloque-cliente-existente">
+                    <select name="cliente_id" id="select_cliente" required>
+                        <option value="">-- Elige un cliente de tu CRM --</option>
+                        {% for cliente in mis_clientes %}
+                            <option value="{{ cliente.id }}">{{ cliente.nombre_o_razon_social }} ({{ cliente.nif_nie }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- MODO 2: Formulario rápido de alta en CRM -->
+                <div id="bloque-cliente-nuevo" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                    <input type="text" name="nuevo_nombre" id="nuevo_nombre" placeholder="Nombre o Razón Social *">
+                    <input type="text" name="nuevo_nif" id="nuevo_nif" placeholder="NIF / NIE / CIF *">
+                    <input type="text" name="nuevo_telefono" placeholder="Teléfono (Ej: +34600000000)">
+                    <input type="email" name="nuevo_email" placeholder="Correo electrónico">
+                    <input type="text" name="nuevo_domicilio" placeholder="Domicilio Fiscal" style="grid-column: span 2;">
+                </div>
+            </div>
+
+
+            <label>Desglose de Conceptos:</label>
+            <div id="contenedor-lineas">
+                <div class="linea-item">
+                    <input type="text" name="descripcion[]" placeholder="Descripción del servicio o producto" required>
+                    <input type="number" step="0.01" name="cantidad[]" placeholder="Cant." value="1" required>
+                    <input type="number" step="0.01" name="precio[]" placeholder="Precio (€)" required>
+                    <button type="button" class="btn btn-del" onclick="eliminarLinea(this)">X</button>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-add" onclick="agregarLinea()">+ Añadir otra línea</button>
+            <button type="submit" class="btn btn-save">💾 Guardar Presupuesto</button>
+        </form>
+        <p style="text-align: center; margin-top: 20px;">
+            <a href="{% url 'dashboard_fiscal' %}" style="color: #7f8c8d; text-decoration: none;">← Volver al Dashboard</a>
+        </p>
+    </div>
+
+    <script>
+        function agregarLinea() {
+            const contenedor = document.getElementById('contenedor-lineas');
+            const nuevaFila = document.createElement('div');
+            nuevaFila.className = 'linea-item';
+            nuevaFila.innerHTML = `
+                <input type="text" name="descripcion[]" placeholder="Descripción del servicio o producto" required>
+                <input type="number" step="0.01" name="cantidad[]" placeholder="Cant." value="1" required>
+                <input type="number" step="0.01" name="precio[]" placeholder="Precio (€)" required>
+                <button type="button" class="btn btn-del" onclick="eliminarLinea(this)">X</button>
+            `;
+            contenedor.appendChild(nuevaFila);
+        }
+        function eliminarLinea(boton) {
+            const filas = document.querySelectorAll('.linea-item');
+            if (filas.length > 1) {
+                boton.parentElement.remove();
+            }
+        }
+        function alternarModoCliente() {
+            const modoInput = document.getElementById('modo_cliente');
+            const bloqueExistente = document.getElementById('bloque-cliente-existente');
+            const bloqueNuevo = document.getElementById('bloque-cliente-nuevo');
+            const selectCliente = document.getElementById('select_cliente');
+            const nuevoNombre = document.getElementById('nuevo_nombre');
+            const nuevoNif = document.getElementById('nuevo_nif');
+            const btnToggle = document.getElementById('btn-toggle-cliente');
+
+            if (modoInput.value === 'existente') {
+                modoInput.value = 'nuevo';
+                bloqueExistente.style.display = 'none';
+                bloqueNuevo.style.display = 'grid';
+                selectCliente.removeAttribute('required');
+                nuevoNombre.setAttribute('required', 'required');
+                nuevoNif.setAttribute('required', 'required');
+                btnToggle.textContent = '← Elegir Cliente Existente';
+                btnToggle.style.background = '#7f8c8d';
+            } else {
+                modoInput.value = 'existente';
+                bloqueExistente.style.display = 'block';
+                bloqueNuevo.style.display = 'none';
+                selectCliente.setAttribute('required', 'required');
+                nuevoNombre.removeAttribute('required');
+                nuevoNif.removeAttribute('required');
+                btnToggle.textContent = '+ Crear Nuevo Cliente';
+                btnToggle.style.background = '#2c3e50';
+            }
+        }
+
+    </script>
+</body>
+</html>
