@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -19,29 +20,31 @@
     </style>
 </head>
 <body>
-    <div class="logo">
-        <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
-    </div>
-    <div class="verification-container">
-        <h2>🔐 Verificación de Identidad</h2>
-        <p>Por motivos de seguridad y Ley Antifraude, hemos enviado dos códigos secretos de 6 dígitos de un solo uso. Introduce ambos para activar tu cuenta.</p>
-        
-        {% if error %}
-            <div class="error-msg">{{ error }}</div>
-        {% endif %}
+    <div>
+        <div class="logo">
+            <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
+        </div>
+        <div class="verification-container">
+            <h2>🔐 Verificación de Identidad</h2>
+            <p>Por motivos de seguridad y Ley Antifraude, hemos enviado dos códigos secretos de 6 dígitos de un solo uso. Introduce ambos para activar tu cuenta.</p>
+            
+            {% if error %}
+                <div class="error-msg">{{ error }}</div>
+            {% endif %}
 
-        <form method="POST">
-            {% csrf_token %}
-            <div class="form-group">
-                <label for="codigo_email">📨 Código enviado a tu Email ({{ correo_destino }}):</label>
-                <input type="text" id="codigo_email" name="codigo_email" placeholder="000000" maxlength="6" required>
-            </div>
-            <div class="form-group">
-                <label for="codigo_sms">📱 Código enviado por SMS a tu Móvil ({{ telefono_destino }}):</label>
-                <input type="text" id="codigo_sms" name="codigo_sms" placeholder="000000" maxlength="6" required>
-            </div>
-            <button type="submit" class="btn-submit">✅ Validar y Activar Mi Cuenta</button>
-        </form>
+            <form method="POST">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="codigo_email">📨 Código enviado a tu Email ({{ correo_destino }}):</label>
+                    <input type="text" id="codigo_email" name="codigo_email" placeholder="000000" maxlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label for="codigo_sms">📱 Código enviado por SMS a tu Móvil ({{ telefono_destino }}):</label>
+                    <input type="text" id="codigo_sms" name="codigo_sms" placeholder="000000" maxlength="6" required>
+                </div>
+                <button type="submit" class="btn-submit">✅ Validar y Activar Mi Cuenta</button>
+            </form>
+        </div>
     </div>
 </body>
 </html>

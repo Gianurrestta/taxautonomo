@@ -24,6 +24,7 @@ from reportlab.graphics.shapes import Drawing
 
 # Importaciones de tu propia aplicación relacional CRM
 from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, LineaCotizacion, Cliente
+from .validators import validar_documento_espanol
 
 def landing_page(request):
     """Muestra la Landing Page de presentación comercial de la plataforma"""
@@ -217,13 +218,13 @@ def generar_y_enviar_cotizacion_pdf(request, cotizacion_id):
     bold_style = ParagraphStyle('Bold', parent=normal_style, fontName='Helvetica-Bold', textColor=colors.HexColor('#0f172a'))
     header_table_style = ParagraphStyle('HeaderTable', parent=normal_style, fontName='Helvetica-Bold', textColor=colors.white)
 
-    # 1. Preparar el logotipo o el nombre del autónomo con el mismo tamaño del título
-    if autonomo.logo and os.path.exists(autonomo.logo.path):
+        # 1. Preparar el logotipo (solo si existe Y el usuario no marcó ocultarlo en este presupuesto)
+    if cotizacion.mostrar_logo and autonomo.logo and os.path.exists(autonomo.logo.path):
         elemento_logo = Image(autonomo.logo.path, width=110, height=55, kind='proportional')
     else:
-        # Usamos directamente titulo_style para que tenga exactamente el mismo tamaño (20pt) y color
         nombre_cabecera_style = ParagraphStyle('NombreCabecera', parent=titulo_style, alignment=0, spaceAfter=0)
         elemento_logo = Paragraph(f"{autonomo.nombre_fiscal.upper()}", nombre_cabecera_style)
+
 
 
     # 2. Preparar el título y datos del presupuesto alineados a la derecha (columna derecha)
@@ -370,20 +371,26 @@ def registro_autonomo(request):
         
     error = None
     if request.method == 'POST':
-        u = request.POST.get('username')
-        em = request.POST.get('email')
-        p = request.POST.get('password')
-        nf = request.POST.get('nombre_fiscal')
-        nif = request.POST.get('nif_nie')
-        df = request.POST.get('domicilio_fiscal')
-        tel = request.POST.get('telefono_registro') # <--- SINCRO: Nombre exacto del input HTML
-        
-        if User.objects.filter(username=u).exists():
+        u = request.POST.get('username', '').strip()
+        em = request.POST.get('email', '').strip()
+        p = request.POST.get('password', '')
+        nf = request.POST.get('nombre_fiscal', '').strip()
+        nif = request.POST.get('nif_nie', '').strip().upper().replace("-", "").replace(" ", "")
+        df = request.POST.get('domicilio_fiscal', '').strip()
+        tel = request.POST.get('telefono_registro', '').strip()
+
+        # VALIDACIÓN MATEMÁTICA OFICIAL DEL NIF / NIE / CIF
+        nif_es_valido, mensaje_nif = validar_documento_espanol(nif)
+
+        if not nif_es_valido:
+            error = mensaje_nif
+        elif User.objects.filter(username=u).exists():
             error = "El nombre de usuario ya está registrado."
         elif PerfilAutonomo.objects.filter(nif_nie=nif).exists():
-            error = "Este NIF/NIE ya está registrado."
+            error = "Este NIF/NIE ya está registrado en nuestra plataforma."
         else:
             nuevo_user = User.objects.create_user(username=u, email=em, password=p)
+            logo_subido = request.FILES.get('logo')
             
             # MATEMÁTICA PURA DE SEGURIDAD: Generamos dos códigos secretos de 6 dígitos independientes
             cod_email = f"{random.randint(100000, 999999)}"
@@ -397,7 +404,8 @@ def registro_autonomo(request):
                 telefono=tel, # <--- SINCRO: Guarda la variable tel en la columna de la base de datos
                 cuenta_verificada=False,
                 codigo_verificacion_email=cod_email,
-                codigo_verificacion_sms=cod_sms
+                codigo_verificacion_sms=cod_sms,
+                logo=logo_subido,
             )
             
             # SIMULACIÓN TÉCNICA: Despachamos las alertas directamente hacia tu terminal de comandos
@@ -806,12 +814,15 @@ def crear_cotizacion(request):
     """Permite crear un presupuesto detallado con cliente existente o nuevo"""
     perfil = get_object_or_404(PerfilAutonomo, user=request.user)
     mis_clientes = Cliente.objects.filter(autonomo=perfil).order_by('nombre_o_razon_social')
+    
 
     if request.method == 'POST':
         modo_cliente = request.POST.get('modo_cliente', 'existente')
         nuevo_nombre = request.POST.get('nuevo_nombre', '').strip()
         cliente_id = request.POST.get('cliente_id', '').strip()
         titulo = request.POST.get('titulo_proyecto', 'Presupuesto de Servicios')
+        ocultar_logo = request.POST.get('ocultar_logo') == '1'
+
 
         # 1. Determinar o crear el cliente de forma segura
         if modo_cliente == 'nuevo' or nuevo_nombre:
@@ -838,6 +849,7 @@ def crear_cotizacion(request):
             autonomo=perfil,
             cliente=cliente_instancia,
             titulo_proyecto=titulo,
+            mostrar_logo=not ocultar_logo,
             cliente_nombre=cliente_instancia.nombre_o_razon_social,
             cliente_nif=cliente_instancia.nif_nie,
             cliente_telefono=getattr(cliente_instancia, 'telefono', ''),

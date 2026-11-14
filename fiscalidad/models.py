@@ -151,6 +151,8 @@ class Cotizacion(models.Model):
     autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='cotizaciones')
     cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name='cotizaciones', null=True)
     titulo_proyecto = models.CharField(max_length=250)
+    mostrar_logo = models.BooleanField(default=True, help_text="Indica si se muestra el logo o el nombre fiscal en el PDF")
+
     
     # Copias estáticas para resguardo comercial rápido
     cliente_nombre = models.CharField(max_length=150, blank=True)

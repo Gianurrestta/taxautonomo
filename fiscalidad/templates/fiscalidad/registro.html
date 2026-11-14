@@ -31,7 +31,7 @@
             <div class="error-msg">{{ error }}</div>
         {% endif %}
 
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-group">
                 <label for="username">Nombre de Usuario para el Login:</label>
@@ -65,6 +65,10 @@
             <div class="form-group">
                 <label for="domicilio_fiscal">Domicilio Fiscal Completo:</label>
                 <input type="text" id="domicilio_fiscal" name="domicilio_fiscal" placeholder="Ej: Calle Mayor 10, Madrid" required>
+            </div>
+            <div class="form-group">
+                <label for="logo">Logotipo de tu Negocio (Opcional - PNG/JPG):</label>
+                <input type="file" id="logo" name="logo" accept="image/*" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f8fafc;">
             </div>
             
             <button type="submit" class="btn-submit">Crear Mi Cuenta y Perfil</button>
