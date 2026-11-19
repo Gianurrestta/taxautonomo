@@ -276,5 +276,82 @@ class SolicitudAlta(models.Model):
     def __str__(self):
         return f"Solicitud Alta - {self.usuario.username} ({self.estado})"
 
+# =========================================================================
+# ADECUACION DE GASTOS Y DEDUCCIONES
+# =========================================================================
+
+class GastoRecibido(models.Model):
+    """Almacena los gastos y tickets escaneados con cálculo inteligente de deducciones"""
+    TIPOS_DOCUMENTO = [
+        ('FACTURA', 'Factura Completa (Deduce IVA + IRPF)'),
+        ('TICKET', 'Ticket / Factura Simplificada (Solo deduce IRPF)'),
+    ]
+    CATEGORIAS_GASTO = [
+        ('GENERAL', 'Material, Software o Servicios (100% deducible)'),
+        ('SUMINISTROS', 'Suministros Vivienda Habitual: Luz, Agua, Internet (30% de afectación)'),
+        ('DIETAS', 'Manutención / Comidas en desplazamiento (Pagado con tarjeta)'),
+        ('VEHICULO', 'Combustible / Transporte (50% IVA habitual salvo afectación exclusiva)'),
+    ]
+
+    autonomo = models.ForeignKey(PerfilAutonomo, on_delete=models.CASCADE, related_name='gastos')
+    numero_factura_recibida = models.CharField(max_length=50, blank=True, null=True, verbose_name="Nº Factura / Ticket")
+    proveedor_nombre = models.CharField(max_length=150)
+    proveedor_nif = models.CharField(max_length=20, blank=True, null=True)
+    fecha_gasto = models.DateField(default=datetime.date.today)
+    concepto = models.CharField(max_length=255, default='Gasto profesional')
+    
+    # Archivo de imagen o PDF del ticket/factura
+    imagen_justificante = models.FileField(upload_to='gastos_tickets/%Y/%m/', blank=True, null=True)
+    tipo_documento = models.CharField(max_length=10, choices=TIPOS_DOCUMENTO, default='FACTURA')
+    categoria = models.CharField(max_length=15, choices=CATEGORIAS_GASTO, default='GENERAL')
+    
+    # Importes económicos
+    base_imponible = models.DecimalField(max_digits=10, decimal_places=2)
+    porcentaje_iva = models.DecimalField(max_digits=4, decimal_places=2, default=Decimal('0.21'))
+    cuota_iva = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    total_gasto = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    # Cálculo inteligente de lo que Hacienda realmente permite descontar
+    iva_deducible = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    gasto_deducible_irpf = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+
+    def calcular_deducciones(self):
+        """Aplica la normativa fiscal española según tipo de documento y categoría"""
+        if self.tipo_documento == 'TICKET':
+            self.iva_deducible = Decimal('0.00')
+            self.gasto_deducible_irpf = self.total_gasto
+        else:
+            if self.categoria == 'SUMINISTROS':
+                factor = Decimal('0.09')
+                self.iva_deducible = (self.cuota_iva * factor).quantize(Decimal('0.01'))
+                self.gasto_deducible_irpf = (self.base_imponible * factor).quantize(Decimal('0.01'))
+            elif self.categoria == 'VEHICULO':
+                self.iva_deducible = (self.cuota_iva * Decimal('0.50')).quantize(Decimal('0.01'))
+                self.gasto_deducible_irpf = (self.base_imponible * Decimal('0.50')).quantize(Decimal('0.01'))
+            else:
+                self.iva_deducible = self.cuota_iva
+                self.gasto_deducible_irpf = self.base_imponible
+
+    def save(self, *args, **kwargs):
+        self.cuota_iva = (self.base_imponible * self.porcentaje_iva).quantize(Decimal('0.01'))
+        self.total_gasto = self.base_imponible + self.cuota_iva
+        self.calcular_deducciones()
+        super().save(*args, **kwargs)
+
+    @property
+    def total_iva_soportado(self):
+        """Mantiene compatibilidad con el cálculo del Dashboard devolviendo el IVA realmente deducible"""
+        return self.iva_deducible
+
+    @property
+    def total_gasto_deducible(self):
+        """Devuelve la base deducible en IRPF para el Modelo 130"""
+        return self.gasto_deducible_irpf
+
+    def __str__(self):
+        return f"{self.proveedor_nombre} - {self.total_gasto} €"
+
+
+
 
     

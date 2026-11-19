@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner Inteligente de Gastos y Tickets</title>
+    <style>
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6f9; padding: 30px; color: #333; margin: 0; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        h2 { color: #1e293b; margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .scan-box { background: #eff6ff; border: 2px dashed #3b82f6; padding: 25px; border-radius: 8px; text-align: center; margin-bottom: 30px; }
+        .grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 13px; color: #334155; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        .btn { padding: 12px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 15px; text-decoration: none; display: inline-block; }
+        .btn-scan { background: #2563eb; color: white; }
+        .btn-save { background: #10b981; color: white; width: 100%; margin-top: 10px; font-size: 16px; }
+        .alert-ocr { background: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 15px; margin-bottom: 20px; font-size: 14px; color: #065f46; }
+        table { width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 13px; }
+        th { background: #1e293b; color: white; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+        .badge-factura { background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+        .badge-ticket { background: #fef3c7; color: #92400e; padding: 3px 8px; border-radius: 4px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; border: none;">📸 Escáner Inteligente de Gastos (OCR)</h2>
+            <a href="{% url 'dashboard_fiscal' %}" style="color: #64748b; text-decoration: none; font-weight: bold;">← Volver al Dashboard</a>
+        </div>
+
+        <!-- PASO 1: SUBIR FOTO O PDF PARA LECTURA AUTOMÁTICA -->
+        <div class="scan-box">
+            <h3 style="margin-top: 0; color: #1d4ed8;">1. Sube una Foto de tu Ticket o Factura Electrónica (PDF)</h3>
+            <p style="font-size: 14px; color: #475569;">El sistema leerá los importes, detectará el NIF y calculará qué porcentaje puedes descontar ante Hacienda.</p>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="accion" value="escanear">
+                <input type="file" name="justificante" accept="image/*,application/pdf" capture="environment" required style="max-width: 400px; background: white; margin-bottom: 15px;">
+                <br>
+                <button type="submit" class="btn btn-scan">🔍 Leer Documento con OCR</button>
+            </form>
+        </div>
+
+        {% if datos_ocr %}
+            <div class="alert-ocr">
+                <strong>✅ Lectura completada:</strong> Hemos rellenado los campos detectados. Vuelve a adjuntar el archivo abajo para archivarlo en tu base de datos y confirma los importes.
+            </div>
+        {% endif %}
+
+        <!-- PASO 2: FORMULARIO DE CONFIRMACIÓN Y GUARDADO -->
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="accion" value="guardar">
+
+            <div class="grid-form">
+                <div class="form-group">
+                    <label>Nombre del Proveedor / Comercio *</label>
+                    <input type="text" name="proveedor_nombre" value="{{ datos_ocr.proveedor_nombre|default:'' }}" required>
+                </div>
+                <div class="form-group">
+                    <label>NIF / CIF del Proveedor</label>
+                    <input type="text" name="proveedor_nif" value="{{ datos_ocr.proveedor_nif|default:'' }}" placeholder="Ej: B12345678">
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de Documento (Regla IVA AEAT) *</label>
+                    <select name="tipo_documento">
+                        <option value="FACTURA" {% if datos_ocr.tipo_documento == 'FACTURA' %}selected{% endif %}>Factura Completa (Deduce IVA + IRPF)</option>
+                        <option value="TICKET" {% if datos_ocr.tipo_documento == 'TICKET' %}selected{% endif %}>Ticket / Simplificada (Solo deduce IRPF, 0% IVA)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Categoría Fiscal (Descuento automático) *</label>
+                    <select name="categoria">
+                        <option value="GENERAL" {% if datos_ocr.categoria == 'GENERAL' %}selected{% endif %}>Material / Software / Servicios (100%)</option>
+                        <option value="SUMINISTROS" {% if datos_ocr.categoria == 'SUMINISTROS' %}selected{% endif %}>Suministros Vivienda: Luz/Internet (30% afectación)</option>
+                        <option value="VEHICULO" {% if datos_ocr.categoria == 'VEHICULO' %}selected{% endif %}>Combustible / Transporte (50% IVA)</option>
+                        <option value="DIETAS" {% if datos_ocr.categoria == 'DIETAS' %}selected{% endif %}>Manutención / Comidas</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha del Gasto *</label>
+                    <input type="date" name="fecha_gasto" value="{{ datos_ocr.fecha_gasto|default:'' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Nº de Factura o Ticket</label>
+                    <input type="text" name="numero_factura" placeholder="Ej: F-9821">
+                </div>
+
+                <div class="form-group">
+                    <label>Base Imponible (€) *</label>
+                    <input type="number" step="0.01" name="base_imponible" value="{{ datos_ocr.base_imponible|default:'' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo de IVA Aplicado</label>
+                    <select name="porcentaje_iva">
+                        <option value="0.21" selected>21% (General)</option>
+                        <option value="0.10">10% (Reducido)</option>
+                        <option value="0.04">4% (Superreducido)</option>
+                        <option value="0.00">0% (Exento)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label>Concepto del Gasto *</label>
+                    <input type="text" name="concepto" placeholder="Ej: Suscripción servidor, combustible desplazamiento..." required>
+                </div>
+
+                <div class="form-group" style="grid-column: span 2; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #cbd5e1;">
+                    <label>📎 Adjuntar Justificante (Foto o PDF) para guardar en Base de Datos:</label>
+                    <input type="file" name="justificante_final" accept="image/*,application/pdf">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-save">💾 Guardar Gasto y Aplicar Descuento Fiscal</button>
+        </form>
+
+        <!-- HISTORIAL DE ÚLTIMOS GASTOS Y DESCUENTOS CALCULADOS -->
+        {% if gastos_recientes %}
+            <h3 style="margin-top: 40px; color: #1e293b;">📊 Últimos Gastos Registrados y Descuentos AEAT</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Proveedor</th>
+                        <th>Tipo</th>
+                        <th>Total Pagado</th>
+                        <th>IVA Deducible</th>
+                        <th>Gasto IRPF</th>
+                        <th>Archivo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in gastos_recientes %}
+                    <tr>
+                        <td>{{ g.fecha_gasto|date:"d/m/Y" }}</td>
+                        <td><strong>{{ g.proveedor_nombre }}</strong><br><small style="color:#64748b;">{{ g.concepto }}</small></td>
+                        <td>
+                            {% if g.tipo_documento == 'FACTURA' %}
+                                <span class="badge-factura">Factura</span>
+                            {% else %}
+                                <span class="badge-ticket">Ticket</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ g.total_gasto }} €</td>
+                        <td style="color: #059669; font-weight: bold;">-{{ g.iva_deducible }} €</td>
+                        <td style="color: #2563eb; font-weight: bold;">-{{ g.gasto_deducible_irpf }} €</td>
+                        <td>
+                            {% if g.imagen_justificante %}
+                                <a href="{{ g.imagen_justificante.url }}" target="_blank" style="color: #2563eb; font-weight: bold;">📄 Ver</a>
+                            {% else %}
+                                <span style="color: #94a3b8;">Sin archivo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+</body>
+</html>

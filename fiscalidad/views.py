@@ -26,6 +26,9 @@ from reportlab.graphics.shapes import Drawing
 from .models import PerfilAutonomo, FacturaEmitida, GastoRecibido, Cotizacion, LineaCotizacion, Cliente
 from .validators import validar_documento_espanol
 
+# importacion de fotos de gastos (facturas y ticketes)
+from .ocr_gastos import procesar_justificante_gasto
+
 def landing_page(request):
     """Muestra la Landing Page de presentación comercial de la plataforma"""
     if request.user.is_authenticated:
@@ -45,7 +48,8 @@ def dashboard_fiscal(request):
     from .services import calcular_impuestos_trimestre
     datos_fiscales = calcular_impuestos_trimestre(perfil, hoy.year, trimestre_actual)
     
-    gastos_mes = GastoRecibido.objects.filter(autonomo=perfil, fecha_gasto__year=hoy.year, fecha_gasto__month=hoy.month)
+    gastos_mes = GastoRecibido.objects.filter(autonomo=perfil).order_by('-fecha_gasto', '-id')
+
     facturas_mes = FacturaEmitida.objects.filter(autonomo=perfil, fecha_emision__year=hoy.year, fecha_emision__month=hoy.month)
     cotizaciones_usuario = Cotizacion.objects.filter(autonomo=perfil).order_by('-fecha_creacion')
 
@@ -875,4 +879,46 @@ def crear_cotizacion(request):
 
     return render(request, 'fiscalidad/crear_cotizacion.html', {'mis_clientes': mis_clientes})
 
+@login_required
+def registrar_gasto_ocr(request):
+    """Permite subir foto de ticket o factura PDF, leerla con OCR y guardar el gasto con deducciones"""
+    perfil = get_object_or_404(PerfilAutonomo, user=request.user)
+    datos_ocr = None
+    mensaje_exito = None
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        # ACCIÓN 1: Escanear foto o PDF para pre-rellenar el formulario
+        if accion == 'escanear' and request.FILES.get('justificante'):
+            archivo = request.FILES['justificante']
+            datos_ocr = procesar_justificante_gasto(archivo, perfil.nif_nie)
+
+        # ACCIÓN 2: Guardar definitivamente el gasto y el archivo en la base de datos
+        elif accion == 'guardar':
+            archivo_final = request.FILES.get('justificante_final')
+            base_imp = Decimal(request.POST.get('base_imponible', '0.00'))
+            iva_pct = Decimal(request.POST.get('porcentaje_iva', '0.21'))
+
+            GastoRecibido.objects.create(
+                autonomo=perfil,
+                proveedor_nombre=request.POST.get('proveedor_nombre', '').strip(),
+                proveedor_nif=request.POST.get('proveedor_nif', '').strip().upper(),
+                numero_factura_recibida=request.POST.get('numero_factura', '').strip(),
+                fecha_gasto=request.POST.get('fecha_gasto'),
+                concepto=request.POST.get('concepto', 'Gasto profesional').strip(),
+                tipo_documento=request.POST.get('tipo_documento', 'FACTURA'),
+                categoria=request.POST.get('categoria', 'GENERAL'),
+                base_imponible=base_imp,
+                porcentaje_iva=iva_pct,
+                imagen_justificante=archivo_final
+            )
+            return redirect('dashboard_fiscal')
+
+    gastos_recientes = GastoRecibido.objects.filter(autonomo=perfil).order_by('-fecha_gasto', '-id')[:10]
+
+    return render(request, 'fiscalidad/registrar_gasto.html', {
+        'datos_ocr': datos_ocr,
+        'gastos_recientes': gastos_recientes
+    })
 
