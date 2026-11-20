@@ -3,6 +3,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AutonoTax</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f9; margin: 0; padding: 20px; color: #333; }
@@ -37,18 +38,18 @@
         .badge-facturado { background: #f4ecf7; color: #8e44ad; }
         .flex-acciones { display: flex; gap: 8px; }
     </style>
+    <link rel="stylesheet" href="{% static 'CSS/mobile.css' %}">
 </head>
 <body>
     <div class="container">
-        <div class="top">
-            <div class="toptittle">
-                <h1>Panel de Control Fiscal Inteligente</h1>
-                <p>Previsiones en tiempo real para el trimestre: <strong>{{ datos_fiscales.ejercicio }} - {{ datos_fiscales.trimestre }}</strong></p>
-            </div>
-            <div class="topimg">
-                <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
-            </div>            
+        <div class="topimg">
+            <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
         </div>
+        <div class="toptittle">
+            <h1>Panel de Control Fiscal Inteligente</h1>
+            <p>Previsiones en tiempo real para el trimestre: <strong>{{ datos_fiscales.ejercicio }} - {{ datos_fiscales.trimestre }}</strong></p>
+        </div>        
+
         <div class="acciones-cabecera">
 
             <a href="{% url 'crear_cotizacion' %}" class="btn" style="background: #3498db;">📝 Crear Presupuesto Detallado</a>

@@ -42,30 +42,32 @@
         /* Footer */
         footer { text-align: center; padding: 20px; background: var(--primary); color: white; margin-top: 8px; font-size: 12px; }
     </style>
+    <link rel="stylesheet" href="{% static 'CSS/mobile.css' %}">
 </head>
 <body>
+    <header>
 
     <!-- Menú Superior -->
-    <nav class="navbar">
-        <div class="logo">
-            <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
-        </div>
-        <div class="nav-links">
-            <a href="{% url 'login_usuario' %}" class="btn-login">🔑 Acceso Clientes</a>
-            <a href="{% url 'registro_autonomo' %}" class="btn">Empezar Gratis</a>
-        </div>
-    </nav>
+        <nav class="navbar">
+            <div class="logo">
+                <img src="{% static 'images/autonotax.png' %}" alt="Logo Plataforma Autónomos">
+            </div>
+            <div class="nav-links">
+                <a href="{% url 'login_usuario' %}" class="btn-login">🔑 Acceso Clientes</a>
+                <a href="{% url 'registro_autonomo' %}" class="btn">Empezar Gratis</a>
+            </div>
+        </nav>
 
     <!-- Sección Principal (Hero) -->
 
         <div class="hero-text">
-            <h1 style:"padding: 5px;">Los Autonomos llevan su negocio en el bolsillo de forma legal.</h1>
+            <h1 style="padding: 5px;">Los Autonomos llevan su negocio en el bolsillo de forma legal.</h1>
         </div>
         
         <!-- Presentacion del servicio -->
         <div class="present">
             <div>
-                <h3 style:"padding: 5px 30px;">🚀 Autonotax: Tu facturación e impuestos de autónomo, bajo control y 100 % legales con Hacienda </h3>
+                <h3 style="padding: 5px 30px;">🚀 Autonotax: Tu facturación e impuestos de autónomo, bajo control y 100 % legales con Hacienda </h3>
                 <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Gestiona toda la administración de tu actividad profesional desde un único lugar, con la máxima seguridad jurídica y sin complicaciones técnicas. Autonotax es la plataforma integral diseñada específicamente para los trabajadores autónomos en España que buscan ahorrar tiempo, proyectar una imagen profesional y evitar cualquier riesgo frente a la Agencia Tributaria.</p>
                 <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Con nuestro sistema en la nube, puedes elaborar presupuestos profesionales en segundos y convertirlos con un solo clic en facturas verificadas. Cumplimos de forma estricta con la Ley Antifraude, la normativa de la AEAT y todos los requisitos técnicos del sistema VERIFACTU, incorporando automáticamente la huella digital encadenada y el código QR oficial en cada documento.</p>
                 <p style="font-size:17px; color: #46505e; margin-top:-10px; padding: 5px 30px;">Además, a medida que registras tus ingresos y digitalizas tus gastos, Autonotax calcula en tiempo real tus obligaciones fiscales. Obtén de manera automática y sin errores los resultados exactos para presentar tus modelos trimestrales y anuales ante Hacienda (IVA, IRPF, retenciones y operaciones intracomunitarias).</p>

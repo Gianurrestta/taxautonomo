@@ -1,0 +1,141 @@
+/* REGLAS GLOBALES Y ADAPTACIÓN MÓVIL (MOBILE-FIRST) */
+* {
+    box-sizing: border-box;
+}
+
+img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Asegurar que todas las tablas permitan deslizar con el dedo sin romper la pantalla */
+table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+        font-size: 15px;
+    }
+
+    .container, .card, .form-container, .dashboard-container {
+        padding: 16px;
+        margin: 0 auto 15px auto;
+        width: 100%;
+        max-width: 100%;
+        border-radius: 8px;
+    }
+
+    /* Convertir cualquier cuadrícula de 2 o más columnas en 1 sola columna apilada */
+    .grid-form, 
+    .grid-cards, 
+    .stats-grid, 
+    #bloque-cliente-nuevo,
+    div[style*="grid-template-columns"] {
+        display: flexbox;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* Cabeceras flexibles que se apilan limpiamente en móvil */
+    div[style*="justify-content: space-between"] {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    /* Botones cómodos para pulsar con el pulgar (mínimo 44px de alto) */
+    .btn, button, a.btn, input[type="submit"] {
+        width: 100%;
+        text-align: center;
+        padding: 12px 16px;
+        margin-bottom: 6px;
+        font-size: 15px;
+    }
+
+    /* Evitar que iOS haga zoom automático al tocar un input (exige font-size >= 16px) */
+    input, select, textarea {
+        font-size: 16px;
+        padding: 12px;
+    }
+
+    h1 { font-size: 22px; }
+    h2 { font-size: 18px; }
+    h3 { font-size: 16px; }
+
+}
+
+/* REGLAS EXACTAS PARA INDEX.HTML DE AUTONOTAX EN MÓVIL */
+@media (max-width: 768px) {
+    /* 1. Barra superior */
+    .navbar {
+        flex-direction: column;
+        padding: 15px;
+        gap: 15px ;
+    }
+
+    .nav-links {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .nav-links .btn-login {
+        margin-right: 0;
+        padding: 8px;
+    }
+
+    /* 2. Título principal Hero */
+    .hero-text h1 {
+        font-size: 26px;
+        padding: 10px 15px;
+        text-align: center;
+        line-height: 1.3;
+    }
+
+    /* 3. Bloque Presentación (.present) y su imagen de 550px */
+    .present {
+        flex-direction: column;
+        padding: 20px 15px;
+        gap: 20px;
+    }
+
+    .present h3, .present p {
+        padding: 5px 5px;
+        margin-top: 0;
+        font-size: 15px;
+    }
+
+    .present h3 {
+        font-size: 19px;
+    }
+
+    .present img, .imgpres01 img {
+        height: auto;
+        width: 100%;
+        max-width: 320px;
+        margin: 0 auto;
+    }
+
+    /* 4. Tarjetas de Características (.features) */
+    .features {
+        margin: 40px auto;
+        padding: 0 15px;
+    }
+
+    .features h2 {
+        font-size: 24px;
+        margin-bottom: 25px;
+    }
+
+    .grid-features {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
